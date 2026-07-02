@@ -5,7 +5,20 @@
 //  Created by Christopher Hardy Gunawan on 02/07/26.
 //
 
-enum Role {
+enum Role: String, CaseIterable {
     case deaf
     case hearing
+    case nonBinary
+
+    var title: String {
+        switch self {
+        case .deaf:
+            return "Deaf"
+        case .hearing:
+            return "Hearing"
+        case .nonBinary:
+            return "non-binary"
+        }
+    }
 }
+
