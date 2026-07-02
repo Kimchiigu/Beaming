@@ -6,10 +6,14 @@
 //
 
 import SwiftUI
+import AVFoundation
 
 struct OnboardingView: View {
+    @Environment(AppState.self) private var appState
     @State private var name: String = ""
     @State private var selectedRole: Role?
+    @State private var showPermissionAlert: Bool = false
+    @State private var permissionMessage: String = ""
 
     var body: some View {
         VStack(spacing: 0) {
@@ -23,7 +27,7 @@ struct OnboardingView: View {
                             .font(.largeTitle)
                             .fontWeight(.bold)
                         Text("""
-Lorem ipsum dolor sit amet, consectetur adipiscing elit.
+Welcome to Beaming! Enter your name and select your role to get started.
 """)
                         .font(.body)
                         .foregroundStyle(.secondary)
@@ -74,24 +78,68 @@ Lorem ipsum dolor sit amet, consectetur adipiscing elit.
             Spacer(minLength: 0)
 
             Button {
-
+                handleContinue()
             } label: {
                 Text("CONTINUE")
                     .fontWeight(.semibold)
                     .frame(maxWidth: .infinity)
                     .frame(height: 56)
             }
-            .disabled(name.isEmpty || selectedRole == nil)
+            .disabled(name.trimmingCharacters(in: .whitespaces).isEmpty || selectedRole == nil)
             .buttonStyle(.borderedProminent)
+            .tint(.black)
+            .foregroundColor(.white)
             .controlSize(.large)
             .padding(.horizontal, 24)
             .padding(.bottom, 24)
         }
         .navigationBarHidden(true)
+        .alert("Permission Required", isPresented: $showPermissionAlert) {
+            Button("OK", role: .cancel) { }
+        } message: {
+            Text(permissionMessage)
+        }
+    }
+    
+    // MARK: - Actions
+    
+    private func handleContinue() {
+        guard let role = selectedRole else { return }
+        let trimmedName = name.trimmingCharacters(in: .whitespaces)
+        guard !trimmedName.isEmpty else { return }
+        
+        // Request permissions based on role
+        requestPermissions(for: role) {
+            // Save user and complete onboarding
+            appState.saveUser(name: trimmedName, role: role)
+        }
+    }
+    
+    private func requestPermissions(for role: Role, completion: @escaping () -> Void) {
+        switch role {
+        case .hearing, .nonBinary:
+            // Hearing users need microphone permission
+            AVAudioApplication.requestRecordPermission { granted in
+                DispatchQueue.main.async {
+                    if granted {
+                        completion()
+                    } else {
+                        permissionMessage = "Microphone access is required for hearing users to detect speech. Please enable it in Settings."
+                        showPermissionAlert = true
+                        // Still allow proceeding — the app will work without mic
+                        completion()
+                    }
+                }
+            }
+        case .deaf:
+            // Deaf users only need local network (prompted automatically by iOS)
+            completion()
+        }
     }
 }
 
 #Preview {
     OnboardingView()
+        .environment(AppState())
 }
 

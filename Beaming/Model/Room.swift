@@ -7,19 +7,33 @@
 
 import Foundation
 
-struct Room: Identifiable {
+struct Room: Identifiable, Codable {
     var id: UUID
     var name: String
-    var capacity: Int // max 8
-    var isHost: User
+    var hostID: UUID
+    var hostName: String
     var isSpeaker: UUID?
-    var guests: [User]
+    var participants: [User]
     
-    init(id: UUID, isHost: User, guests: [User]) {
+    var participantCount: Int {
+        participants.count
+    }
+    
+    var isFull: Bool {
+        participantCount >= 8
+    }
+    
+    init(id: UUID, host: User, participants: [User] = []) {
         self.id = id
-        self.isHost = isHost
-        self.name = isHost.name + "'s room"
-        self.capacity = guests.count + 1
-        self.guests = guests
+        self.hostID = host.id
+        self.hostName = host.name
+        self.name = host.name + "'s Room"
+        var allParticipants = participants
+        if !allParticipants.contains(where: { $0.id == host.id }) {
+            var hostUser = host
+            hostUser.joinedTime = Date()
+            allParticipants.insert(hostUser, at: 0)
+        }
+        self.participants = allParticipants
     }
 }

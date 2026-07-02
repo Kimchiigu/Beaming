@@ -10,9 +10,22 @@
 		AEAECB8B2FF5F486009E24F5 /* Beaming.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Beaming.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		36D724C92FF621A000C10806 /* Exceptions for "Beaming" folder in "Beaming" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = AEAECB8A2FF5F486009E24F5 /* Beaming */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		AEAECB8D2FF5F486009E24F5 /* Beaming */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				36D724C92FF621A000C10806 /* Exceptions for "Beaming" folder in "Beaming" target */,
+			);
 			path = Beaming;
 			sourceTree = "<group>";
 		};
@@ -253,9 +266,12 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = GLM4HJ3467;
+				DEVELOPMENT_TEAM = 3LU8LUNSN3;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Beaming/Info.plist;
+				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "Beaming needs local network access to discover and connect to nearby rooms.";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Beaming needs microphone access to detect when you're speaking.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -285,9 +301,12 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = GLM4HJ3467;
+				DEVELOPMENT_TEAM = 3LU8LUNSN3;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Beaming/Info.plist;
+				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "Beaming needs local network access to discover and connect to nearby rooms.";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Beaming needs microphone access to detect when you're speaking.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;

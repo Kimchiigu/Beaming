@@ -20,7 +20,7 @@ struct RoomCardView: View {
                 
                 Spacer()
                 
-                Text("\(room.capacity) / 8")
+                Text("\(room.participantCount) / 8")
                     .font(.title3)
                     .fontWeight(.bold)
                     .foregroundColor(.black)
@@ -44,8 +44,8 @@ struct RoomCardView: View {
     
     let mockRoom = Room(
         id: UUID(),
-        isHost: mockHost,
-        guests: [mockGuest]
+        host: mockHost,
+        participants: [mockGuest]
     )
     
     RoomCardView(room: mockRoom) {

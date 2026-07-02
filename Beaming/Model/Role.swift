@@ -5,7 +5,7 @@
 //  Created by Christopher Hardy Gunawan on 02/07/26.
 //
 
-enum Role: String, CaseIterable {
+enum Role: String, CaseIterable, Codable, Hashable {
     case deaf
     case hearing
     case nonBinary

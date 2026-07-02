@@ -8,16 +8,18 @@
 import SwiftUI
 
 struct ContentView: View {
+    @State private var appState = AppState()
+    
     var body: some View {
-        VStack {
-            Text("Let's Discuss")
-                .font(.title)
-                .bold()
+        NavigationStack {
+            if appState.hasOnboarded, appState.currentUser != nil {
+                HomeView()
+                    .environment(appState)
+            } else {
+                OnboardingView()
+                    .environment(appState)
+            }
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(16)
-        
-        Spacer()
     }
 }
 
