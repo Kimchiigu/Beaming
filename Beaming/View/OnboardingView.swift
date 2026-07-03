@@ -117,7 +117,7 @@ Welcome to Beaming! Enter your name and select your role to get started.
     
     private func requestPermissions(for role: Role, completion: @escaping () -> Void) {
         switch role {
-        case .hearing, .nonBinary:
+        case .hearing:
             // Hearing users need microphone permission
             AVAudioApplication.requestRecordPermission { granted in
                 DispatchQueue.main.async {

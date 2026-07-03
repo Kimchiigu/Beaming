@@ -29,6 +29,12 @@ class MeetingViewModel {
     /// Whether this device currently holds the speaker lock and has flashlight on.
     var isActiveSpeaker: Bool = false
     
+    /// Whether the calibration screen should be shown (hearing users only).
+    var showCalibration: Bool = false
+    
+    /// Whether calibration has been completed.
+    var isCalibrationDone: Bool = false
+    
     // MARK: - Managers
     
     let networkManager: NetworkManager
@@ -40,6 +46,14 @@ class MeetingViewModel {
     /// Pending connection for host accepting new guests
     private var pendingConnections: [ObjectIdentifier: NWConnection] = [:]
     private let motionManager = CMMotionManager()
+    
+    /// Competing claim resolution: collect claims in a 150ms window, pick loudest
+    private var pendingClaims: [(userID: UUID, rmsLevel: Float)] = []
+    private var claimResolutionTimer: Timer?
+    private let claimWindowDuration: TimeInterval = 0.15  // 150ms
+    
+    /// Timer for periodically broadcasting room state to prevent stuck participants
+    private var syncTimer: Timer?
     
     // MARK: - Init
     
@@ -63,26 +77,55 @@ class MeetingViewModel {
             startHosting()
         }
         
-        // Start audio for hearing users
-        if localUser.role == .hearing || localUser.role == .nonBinary {
-            setupAudio()
+        // For hearing users: show calibration first, then start audio
+        if localUser.role == .hearing {
+            showCalibration = true
             startFaceDownDetection()
         }
+    }
+    
+    // MARK: - Calibration
+    
+    /// Start the voice calibration process.
+    func startCalibration() {
+        audioManager.onCalibrationComplete = { [weak self] in
+            guard let self = self else { return }
+            self.isCalibrationDone = true
+            
+            // Short delay then dismiss calibration and start listening
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
+                self.showCalibration = false
+                self.setupAudio()
+            }
+        }
+        audioManager.startCalibration()
+    }
+    
+    /// Skip calibration and use manual threshold.
+    func skipCalibration() {
+        showCalibration = false
+        setupAudio()
     }
     
     // MARK: - Host Setup
     
     private func startHosting() {
         networkManager.startAdvertising(roomID: room.id, hostName: localUser.name)
+        
+        // Start periodic sync to keep guests in sync (e.g. if a leave message is missed)
+        syncTimer?.invalidate()
+        syncTimer = Timer.scheduledTimer(withTimeInterval: 3.0, repeats: true) { [weak self] _ in
+            self?.broadcastParticipantUpdate()
+        }
     }
     
     // MARK: - Audio Setup
     
     private func setupAudio() {
-        audioManager.onSpeakingStateChanged = { [weak self] speaking in
+        audioManager.onSpeakingStateChanged = { [weak self] speaking, rmsLevel in
             guard let self = self else { return }
             if speaking {
-                self.claimSpeaker()
+                self.claimSpeaker(rmsLevel: rmsLevel)
             } else {
                 self.releaseSpeaker()
             }
@@ -130,8 +173,8 @@ class MeetingViewModel {
                 isHost = true
             }
             
-        case .speakerClaim(let userID):
-            handleSpeakerClaim(from: userID)
+        case .speakerClaim(let userID, let rmsLevel):
+            handleSpeakerClaim(from: userID, rmsLevel: rmsLevel)
             
         case .speakerRelease(let userID):
             handleSpeakerRelease(from: userID)
@@ -178,7 +221,6 @@ class MeetingViewModel {
         
         if room.isFull {
             // Find the pending connection for this user and reject
-            // Send rejection via broadcast (the user will check their own ID)
             let response = NetworkMessage.joinResponse(success: false, room: nil, reason: "Room is full")
             networkManager.broadcastMessage(response)
             return
@@ -190,7 +232,6 @@ class MeetingViewModel {
         room.participants.append(joiningUser)
         
         // Register the pending connection with this user's ID
-        // Find the most recent pending connection
         if let (key, connection) = pendingConnections.first {
             networkManager.registerPeer(user.id, connection: connection)
             pendingConnections.removeValue(forKey: key)
@@ -216,18 +257,18 @@ class MeetingViewModel {
         }
     }
     
-    // MARK: - Speaker Lock
+    // MARK: - Speaker Lock (with Competing Claim Resolution)
     
     /// Attempt to claim the speaker lock (called when local user starts speaking).
-    private func claimSpeaker() {
+    private func claimSpeaker(rmsLevel: Float) {
         guard !isMuted else { return }
         
         if isHost {
-            // Host evaluates locally
-            handleSpeakerClaim(from: localUser.id)
+            // Host evaluates locally — add to competing claims window
+            handleSpeakerClaim(from: localUser.id, rmsLevel: rmsLevel)
         } else {
-            // Guest sends claim to host
-            networkManager.sendToHost(.speakerClaim(userID: localUser.id))
+            // Guest sends claim with RMS level to host
+            networkManager.sendToHost(.speakerClaim(userID: localUser.id, rmsLevel: rmsLevel))
         }
     }
     
@@ -240,24 +281,57 @@ class MeetingViewModel {
         }
     }
     
-    /// Evaluate a speaker claim (host side).
-    private func handleSpeakerClaim(from userID: UUID) {
-        if isHost {
-            if room.isSpeaker == nil {
-                // Room is free — grant the lock
-                room.isSpeaker = userID
-                
-                // If the host themselves claimed it
-                if userID == localUser.id {
-                    isActiveSpeaker = true
-                    flashlightManager.setFlashlight(on: true)
-                }
-                
-                // Broadcast speaker status to all
-                networkManager.broadcastMessage(.speakerStatus(speakerID: userID))
+    /// Evaluate a speaker claim (host side) — uses competing claim window.
+    private func handleSpeakerClaim(from userID: UUID, rmsLevel: Float) {
+        guard isHost else { return }
+        
+        // If room is already locked by someone, silently reject
+        guard room.isSpeaker == nil else { return }
+        
+        // Add this claim to the pending claims buffer
+        pendingClaims.append((userID: userID, rmsLevel: rmsLevel))
+        
+        // If this is the first claim, start the 150ms resolution window
+        if claimResolutionTimer == nil {
+            claimResolutionTimer = Timer.scheduledTimer(withTimeInterval: claimWindowDuration, repeats: false) { [weak self] _ in
+                self?.resolveCompetingClaims()
             }
-            // If room is locked by another user, silently reject
         }
+    }
+    
+    /// After the 150ms window, pick the loudest claimant.
+    private func resolveCompetingClaims() {
+        claimResolutionTimer = nil
+        
+        // Double-check the room is still free (could have been claimed in a previous resolution)
+        guard room.isSpeaker == nil else {
+            pendingClaims.removeAll()
+            return
+        }
+        
+        // Pick the claim with the highest RMS level (loudest = closest to speaker's mouth)
+        guard let winner = pendingClaims.max(by: { $0.rmsLevel < $1.rmsLevel }) else {
+            pendingClaims.removeAll()
+            return
+        }
+        
+        let winnerID = winner.userID
+        print("[MeetingVM] Speaker lock granted to \(winnerID) with RMS \(winner.rmsLevel) (from \(pendingClaims.count) competing claims)")
+        
+        // Clear pending claims
+        pendingClaims.removeAll()
+        
+        // Grant the lock
+        room.isSpeaker = winnerID
+        
+        // If the host themselves won
+        if winnerID == localUser.id {
+            isActiveSpeaker = true
+            flashlightManager.setFlashlight(on: true)
+        }
+        
+        // Broadcast speaker status to all
+        networkManager.broadcastMessage(.speakerStatus(speakerID: winnerID))
     }
     
     /// Handle speaker release (host side).
@@ -365,6 +439,11 @@ class MeetingViewModel {
         audioManager.stopListening()
         flashlightManager.setFlashlight(on: false)
         motionManager.stopAccelerometerUpdates()
+        claimResolutionTimer?.invalidate()
+        claimResolutionTimer = nil
+        syncTimer?.invalidate()
+        syncTimer = nil
+        pendingClaims.removeAll()
         if isHost {
             networkManager.stopAdvertising()
             for (id, _) in networkManager.peerConnections {

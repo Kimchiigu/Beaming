@@ -8,7 +8,6 @@
 enum Role: String, CaseIterable, Codable, Hashable {
     case deaf
     case hearing
-    case nonBinary
 
     var title: String {
         switch self {
@@ -16,8 +15,6 @@ enum Role: String, CaseIterable, Codable, Hashable {
             return "Deaf"
         case .hearing:
             return "Hearing"
-        case .nonBinary:
-            return "non-binary"
         }
     }
 }

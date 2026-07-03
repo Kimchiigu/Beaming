@@ -8,44 +8,66 @@
 import AVFoundation
 import Foundation
 
-/// Controls the device's hardware flashlight (torch) with blinking support.
+/// Controls the device's hardware flashlight (torch).
+/// When activated, does 3 quick blinks then turns off (less distracting).
 class FlashlightManager {
     
     private var blinkTimer: Timer?
-    private var isCurrentlyOn: Bool = false
-    private let blinkInterval: TimeInterval = 0.35
+    private var blinkCount: Int = 0
+    private let totalBlinks: Int = 3
+    private let blinkOnDuration: TimeInterval = 0.15
+    private let blinkOffDuration: TimeInterval = 0.10
     
-    /// Start blinking the flashlight.
-    func startBlinking() {
-        stopBlinking()
-        
-        // Turn on immediately
-        setTorch(on: true)
-        isCurrentlyOn = true
-        
-        // Start blink loop
-        blinkTimer = Timer.scheduledTimer(withTimeInterval: blinkInterval, repeats: true) { [weak self] _ in
-            guard let self = self else { return }
-            self.isCurrentlyOn.toggle()
-            self.setTorch(on: self.isCurrentlyOn)
-        }
-    }
-    
-    /// Stop blinking and turn off the flashlight.
-    func stopBlinking() {
-        blinkTimer?.invalidate()
-        blinkTimer = nil
-        isCurrentlyOn = false
-        setTorch(on: false)
-    }
-    
-    /// Turn the flashlight on or off (single action, no blinking).
+    /// Start the 3-blink sequence (called when speaker lock is acquired).
     func setFlashlight(on: Bool) {
         if on {
-            startBlinking()
+            startBlinkSequence()
         } else {
             stopBlinking()
         }
+    }
+    
+    /// 3 quick blinks: ON-OFF-ON-OFF-ON-OFF, then done.
+    private func startBlinkSequence() {
+        stopBlinking()
+        blinkCount = 0
+        
+        // Immediately turn on for first blink
+        setTorch(on: true)
+        blinkCount = 1
+        
+        // Schedule alternating on/off
+        var step = 0
+        let totalSteps = (totalBlinks * 2) - 1  // ON-off-ON-off-ON = 5 steps (already did first ON)
+        
+        blinkTimer = Timer.scheduledTimer(withTimeInterval: blinkOnDuration, repeats: true) { [weak self] timer in
+            guard let self = self else {
+                timer.invalidate()
+                return
+            }
+            
+            step += 1
+            
+            if step > totalSteps {
+                // Done — turn off and stop
+                self.setTorch(on: false)
+                timer.invalidate()
+                self.blinkTimer = nil
+                return
+            }
+            
+            // Even steps = OFF, odd steps = ON
+            let isOn = (step % 2 == 0)
+            self.setTorch(on: isOn)
+        }
+    }
+    
+    /// Stop any active blinking and turn off the torch.
+    func stopBlinking() {
+        blinkTimer?.invalidate()
+        blinkTimer = nil
+        blinkCount = 0
+        setTorch(on: false)
     }
     
     /// Direct torch control.

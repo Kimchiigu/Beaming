@@ -24,10 +24,10 @@ struct HomeView: View {
                 let vm = HomeViewModel(currentUser: user)
                 self.viewModel = vm
                 vm.startDiscovery()
+            } else if let vm = viewModel {
+                // Returning from a meeting — reset state and restart discovery
+                vm.resetAfterMeeting()
             }
-        }
-        .onDisappear {
-            viewModel?.stopDiscovery()
         }
     }
     
@@ -148,14 +148,25 @@ struct HomeView: View {
             Button(action: {
                 viewModel.createRoom()
             }) {
-                Text("+ Create Room")
-                    .font(.headline)
-                    .foregroundColor(.white)
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 56)
-                    .background(Color.black)
-                    .clipShape(RoundedRectangle(cornerRadius: 14))
+                HStack {
+                    if viewModel.isJoining {
+                        ProgressView()
+                            .tint(.white)
+                        Text("Connecting...")
+                            .font(.headline)
+                            .foregroundColor(.white)
+                    } else {
+                        Text("+ Create Room")
+                            .font(.headline)
+                            .foregroundColor(.white)
+                    }
+                }
+                .frame(maxWidth: .infinity)
+                .frame(height: 56)
+                .background(viewModel.isJoining ? Color.gray : Color.black)
+                .clipShape(RoundedRectangle(cornerRadius: 14))
             }
+            .disabled(viewModel.isJoining)
             .padding(.horizontal)
             .padding(.bottom, 20)
         }

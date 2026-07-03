@@ -16,6 +16,7 @@ class HomeViewModel {
     var availableRooms: [DiscoveredRoom] = []
     var showAlert: Bool = false
     var alertMessage: String = ""
+    var isJoining: Bool = false
     
     /// Set when navigation to meeting should occur.
     var navigateToMeeting: Bool = false
@@ -23,7 +24,9 @@ class HomeViewModel {
     /// The MeetingViewModel for the active meeting (created on join/create).
     var activeMeetingVM: MeetingViewModel?
     
-    let networkManager = NetworkManager()
+    /// Dedicated NetworkManager for browsing only. Meeting gets its own.
+    private let browseManager = NetworkManager()
+    private var discoveryTimer: Timer?
     
     /// Represents a room discovered via Bonjour.
     struct DiscoveredRoom: Identifiable {
@@ -60,27 +63,28 @@ class HomeViewModel {
     // MARK: - Discovery
     
     func startDiscovery() {
-        networkManager.startBrowsing()
+        browseManager.startBrowsing()
         
         // Observe discovered rooms from Bonjour browser results
-        // We use a timer to periodically sync since NWBrowser.Result isn't directly Observable
-        Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
+        discoveryTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
             guard let self = self else { return }
             DispatchQueue.main.async {
-                self.availableRooms = self.networkManager.discoveredRooms.map { DiscoveredRoom(from: $0) }
+                self.availableRooms = self.browseManager.discoveredRooms.map { DiscoveredRoom(from: $0) }
             }
         }
     }
     
     func stopDiscovery() {
-        networkManager.stopBrowsing()
+        discoveryTimer?.invalidate()
+        discoveryTimer = nil
+        browseManager.stopBrowsing()
     }
     
     /// Restart browsing to refresh the room list.
     func refreshRooms() {
-        networkManager.stopBrowsing()
+        stopDiscovery()
         availableRooms = []
-        networkManager.startBrowsing()
+        startDiscovery()
     }
     
     // MARK: - Role Change
@@ -91,7 +95,7 @@ class HomeViewModel {
         appState.saveUser(name: currentUser.name, role: newRole)
         
         // Request mic permission if switching to hearing
-        if newRole == .hearing || newRole == .nonBinary {
+        if newRole == .hearing {
             AVAudioApplication.requestRecordPermission { granted in
                 DispatchQueue.main.async {
                     if !granted {
@@ -106,20 +110,51 @@ class HomeViewModel {
     // MARK: - Join Room
     
     func joinRoom(room: DiscoveredRoom) {
-        networkManager.connectToHost(endpoint: room.endpoint, localUser: currentUser) { [weak self] success in
-            guard let self = self else { return }
+        // Prevent double-tap / concurrent joins
+        guard !isJoining else { return }
+        isJoining = true
+        
+        // Stop browsing — we're committing to joining
+        stopDiscovery()
+        
+        // Create a FRESH NetworkManager for the meeting session
+        let meetingNetworkManager = NetworkManager()
+        
+        // Timeout: if connection doesn't succeed in 5 seconds, abort
+        var didComplete = false
+        let timeoutWork = DispatchWorkItem { [weak self] in
+            guard let self = self, !didComplete else { return }
+            didComplete = true
+            self.isJoining = false
+            self.alertMessage = "Connection timed out. Please try again."
+            self.showAlert = true
+            meetingNetworkManager.disconnectFromHost()
+            // Restart discovery
+            self.startDiscovery()
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 5.0, execute: timeoutWork)
+        
+        meetingNetworkManager.connectToHost(endpoint: room.endpoint, localUser: currentUser) { [weak self] success in
+            guard let self = self, !didComplete else { return }
+            didComplete = true
+            timeoutWork.cancel()
+            
             if success {
-                // Create a MeetingViewModel as guest
                 let meetingVM = MeetingViewModel(
                     localUser: self.currentUser,
-                    networkManager: self.networkManager,
+                    networkManager: meetingNetworkManager,
                     asHost: false
                 )
                 self.activeMeetingVM = meetingVM
                 self.navigateToMeeting = true
+                self.isJoining = false
             } else {
+                self.isJoining = false
                 self.alertMessage = "Failed to connect to room."
                 self.showAlert = true
+                meetingNetworkManager.disconnectFromHost()
+                // Restart discovery
+                self.startDiscovery()
             }
         }
     }
@@ -127,12 +162,33 @@ class HomeViewModel {
     // MARK: - Create Room
     
     func createRoom() {
+        // Prevent accidental double-create
+        guard !isJoining else { return }
+        isJoining = true
+        
+        // Stop browsing
+        stopDiscovery()
+        
+        // Create a FRESH NetworkManager for the meeting session
+        let meetingNetworkManager = NetworkManager()
+        
         let meetingVM = MeetingViewModel(
             localUser: currentUser,
-            networkManager: networkManager,
+            networkManager: meetingNetworkManager,
             asHost: true
         )
         self.activeMeetingVM = meetingVM
         self.navigateToMeeting = true
+        self.isJoining = false
+    }
+    
+    // MARK: - Reset after leaving meeting
+    
+    func resetAfterMeeting() {
+        activeMeetingVM = nil
+        navigateToMeeting = false
+        isJoining = false
+        // Restart discovery for finding new rooms
+        startDiscovery()
     }
 }

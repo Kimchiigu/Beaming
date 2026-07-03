@@ -96,8 +96,12 @@ struct MeetingView: View {
                     .padding(.bottom, 24)
             }
             
-            // MARK: Face-Down Overlay (Hearing users only)
-            if viewModel.isFaceDown && (viewModel.localUser.role == .hearing || viewModel.localUser.role == .nonBinary) {
+            // MARK: Calibration Overlay (Hearing users, before meeting starts)
+            if viewModel.showCalibration {
+                CalibrationView(viewModel: viewModel)
+            }
+            // MARK: Face-Down Overlay (Hearing users only, after calibration)
+            else if viewModel.isFaceDown && viewModel.localUser.role == .hearing {
                 FaceDownView()
             }
         }
@@ -146,7 +150,7 @@ struct MeetingView: View {
             }
             
             // Mic toggle (Hearing users only)
-            if viewModel.localUser.role == .hearing || viewModel.localUser.role == .nonBinary {
+            if viewModel.localUser.role == .hearing {
                 Button {
                     viewModel.toggleMute()
                 } label: {

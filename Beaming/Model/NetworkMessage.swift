@@ -17,8 +17,8 @@ enum NetworkMessage: Codable {
     case participantUpdate(participants: [User], hostID: UUID, roomName: String)
     case roomInfo(room: Room)
     
-    // Speaker lock
-    case speakerClaim(userID: UUID)
+    // Speaker lock — speakerClaim now includes RMS level for loudness-based resolution
+    case speakerClaim(userID: UUID, rmsLevel: Float)
     case speakerRelease(userID: UUID)
     case speakerStatus(speakerID: UUID?)
     
