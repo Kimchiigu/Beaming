@@ -77,14 +77,17 @@ class MeetingViewModel {
             startHosting()
         }
         
-        // For hearing users: show calibration first, then start audio
-        if localUser.role == .hearing {
-            showCalibration = true
-            startFaceDownDetection()
-        }
+        // All users: show calibration first, then start audio after done
+        showCalibration = true
+        startFaceDownDetection()
     }
     
     // MARK: - Calibration
+    
+    /// The Bonjour service name encoded for QR sharing.
+    var qrCodeString: String {
+        return "\(localUser.name)::::" + room.id.uuidString
+    }
     
     /// Start the voice calibration process.
     func startCalibration() {
@@ -99,12 +102,6 @@ class MeetingViewModel {
             }
         }
         audioManager.startCalibration()
-    }
-    
-    /// Skip calibration and use manual threshold.
-    func skipCalibration() {
-        showCalibration = false
-        setupAudio()
     }
     
     // MARK: - Host Setup

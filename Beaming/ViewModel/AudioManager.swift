@@ -60,7 +60,7 @@ class AudioManager {
     /// Calibration data collection
     private var calibrationSamples: [Float] = []
     private var calibrationTimer: Timer?
-    private let calibrationDuration: TimeInterval = 5.0  // 5 seconds
+    private let calibrationDuration: TimeInterval = 3.0  // 3 seconds
     
     /// Callback when speaking state changes. Includes the current RMS level for loudness-based claim.
     var onSpeakingStateChanged: ((Bool, Float) -> Void)?

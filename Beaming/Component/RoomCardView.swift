@@ -1,5 +1,5 @@
 //
-//  RoomCardView.swift
+//  RoomCardView.swift --> RoomCardComponent
 //  Beaming
 //
 //  Created by Axel Nino Nakata on 02/07/26.
