@@ -8,7 +8,6 @@
 import Foundation
 import Network
 import Observation
-import AVFoundation
 
 @Observable
 class HomeViewModel {
@@ -27,6 +26,7 @@ class HomeViewModel {
     /// Dedicated NetworkManager for browsing only. Meeting gets its own.
     private let browseManager = NetworkManager()
     private var discoveryTimer: Timer?
+    private var qrPollTimer: Timer?  // Strong reference so it isn't deallocated during polling
     
     /// Represents a room discovered via Bonjour.
     struct DiscoveredRoom: Identifiable {
@@ -87,22 +87,55 @@ class HomeViewModel {
         startDiscovery()
     }
     
-    // MARK: - Role Change
+    // MARK: - Join via QR Code
     
-    /// Change the user's role and request permissions if needed.
-    func changeRole(to newRole: Role, appState: AppState) {
-        currentUser.role = newRole
-        appState.saveUser(name: currentUser.name, role: newRole)
+    /// Called when the user scans a QR code containing a Bonjour service name.
+    /// Format: "hostName::::roomUUID"
+    func joinRoomFromQR(qrString: String) {
+        guard !isJoining else { return }
         
-        // Request mic permission if switching to hearing
-        if newRole == .hearing {
-            AVAudioApplication.requestRecordPermission { granted in
-                DispatchQueue.main.async {
-                    if !granted {
-                        self.alertMessage = "Microphone access is needed for hearing users. You can enable it in Settings."
-                        self.showAlert = true
-                    }
-                }
+        let components = qrString.components(separatedBy: "::::")
+        guard components.count >= 2, let roomUUID = UUID(uuidString: components[1]) else {
+            alertMessage = "Kode QR tidak valid."
+            showAlert = true
+            return
+        }
+        
+        // Show loading state on the Scan QR button
+        isJoining = true
+        
+        // Restart browsing fresh to find this specific room
+        stopDiscovery()
+        availableRooms = []
+        startDiscovery()
+        
+        // Poll for the matching service for up to 8 seconds
+        // (first-time Bonjour discovery can take 2-4 seconds on local network)
+        var attempts = 0
+        let maxAttempts = 16  // 16 × 0.5s = 8 seconds total
+        
+        qrPollTimer?.invalidate()
+        qrPollTimer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { [weak self] timer in
+            guard let self = self else { timer.invalidate(); return }
+            attempts += 1
+            
+            if let matchingRoom = self.availableRooms.first(where: { room in
+                let parts = room.id.components(separatedBy: "::::")
+                return parts.count >= 2 && parts[1] == roomUUID.uuidString
+            }) {
+                timer.invalidate()
+                self.qrPollTimer = nil
+                // CRITICAL: reset isJoining so joinRoom()'s guard passes.
+                // joinRoom() will immediately re-set it to true before connecting.
+                self.isJoining = false
+                self.joinRoom(room: matchingRoom)
+            } else if attempts >= maxAttempts {
+                timer.invalidate()
+                self.qrPollTimer = nil
+                self.isJoining = false
+                self.alertMessage = "Diskusi tidak ditemukan. Pastikan penyelenggara aktif dan di jaringan yang sama."
+                self.showAlert = true
+                self.startDiscovery()
             }
         }
     }

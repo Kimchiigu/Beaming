@@ -6,5 +6,9 @@
 	<array>
 		<string>_beaming._tcp</string>
 	</array>
+	<key>NSCameraUsageDescription</key>
+	<string>Beaming menggunakan kamera untuk memindai kode QR agar kamu bisa bergabung ke diskusi.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Beaming menggunakan mikrofon untuk mendeteksi suaramu dan mengaktifkan lampu sebagai penanda pembicara.</string>
 </dict>
 </plist>
