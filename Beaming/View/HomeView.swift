@@ -50,14 +50,16 @@ struct HomeView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading)
                 .offset(x: -150, y: 180)
 
-            // Big hero mascot behind the content, top-right
-            Image("MascotHome")
-                .resizable()
-                .scaledToFit()
-                .frame(height: 430)
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
-                .offset(x: 28, y: -18)
-                .accessibilityHidden(true)
+            // Big hero mascot behind the content, top-right (~3/4 screen height)
+            GeometryReader { geo in
+                Image("MascotHome")
+                    .resizable()
+                    .scaledToFit()
+                    .frame(height: geo.size.height * 0.75)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
+                    .offset(x: 28, y: -18)
+                    .accessibilityHidden(true)
+            }
 
             VStack(spacing: 0) {
                 VStack(alignment: .leading, spacing: 2) {

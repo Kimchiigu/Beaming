@@ -35,6 +35,13 @@ struct CalibrationView: View {
             VStack(spacing: 0) {
                 calibrationToolbar
 
+                Image(viewModel.isCalibrationDone ? "MascotDone" : "MascotCalibrate")
+                    .resizable()
+                    .scaledToFit()
+                    .frame(height: viewModel.isCalibrationDone ? 240 : 160)
+                    .padding(.top, 24)
+                    .accessibilityHidden(true)
+
                 HStack(spacing: 9) {
                     Image(systemName: "lines.measurement.horizontal")
                         .font(.system(size: 22))
@@ -43,14 +50,7 @@ struct CalibrationView: View {
                         .tracking(-0.26)
                 }
                 .foregroundStyle(.black)
-                .padding(.top, 28)
-
-                Image(viewModel.isCalibrationDone ? "MascotDone" : "MascotCalibrate")
-                    .resizable()
-                    .scaledToFit()
-                    .frame(height: 150)
-                    .padding(.top, 8)
-                    .accessibilityHidden(true)
+                .padding(.top, 8)
 
                 Spacer(minLength: 12)
 
@@ -161,10 +161,7 @@ struct CalibrationView: View {
     // MARK: - Done
 
     private var doneState: some View {
-        VStack(spacing: 12) {
-            Image(systemName: "checkmark.circle.fill")
-                .font(.system(size: 60))
-                .foregroundStyle(BeamingPalette.green)
+        VStack(spacing: 6) {
             Text("Kalibrasi Selesai!")
                 .font(.system(size: 22, weight: .bold))
                 .foregroundStyle(.black)

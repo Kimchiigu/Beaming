@@ -8,8 +8,7 @@
 import SwiftUI
 
 /// The active discussion ("Mode Diskusi"). Interface is identical for host and
-/// guest. The host's join-QR auto-opens at half height once calibration ends,
-/// and is also available from the more-menu.
+/// guest. The host's join-QR auto-opens at half height once calibration ends.
 struct MeetingView: View {
     @Environment(AppState.self) private var appState
     @Environment(\.dismiss) private var dismiss
@@ -37,20 +36,13 @@ struct MeetingView: View {
         .toolbar((viewModel.isFaceDown || viewModel.showCalibration) ? .hidden : .visible,
                  for: .navigationBar)
         .toolbar {
+            // "Keluar Diskusi" — top-right exit door, red.
             ToolbarItem(placement: .topBarTrailing) {
-                Menu {
-                    Button {
-                        showHostQR = true
-                    } label: {
-                        Label("Kode QR", systemImage: "qrcode")
-                    }
-                    Button(role: .destructive) {
-                        viewModel.leaveRoom()
-                    } label: {
-                        Label("Keluar", systemImage: "rectangle.portrait.and.arrow.right")
-                    }
+                Button {
+                    viewModel.leaveRoom()
                 } label: {
-                    Image(systemName: "ellipsis.circle")
+                    Image(systemName: "rectangle.portrait.and.arrow.right")
+                        .foregroundStyle(.red)
                 }
             }
         }
@@ -120,41 +112,56 @@ struct MeetingView: View {
                 .shadow(color: .black.opacity(0.08), radius: 8, y: 2)
                 .padding(.top, 12)
 
-                Spacer()
+                Spacer(minLength: 0)
 
-                ZStack {
-                    Circle()
-                        .fill(RadialGradient(
-                            colors: [BeamingPalette.yellow.opacity(0.5), .clear],
-                            center: .center,
-                            startRadius: 0,
-                            endRadius: 160
-                        ))
-                        .frame(width: 300, height: 300)
-                        .blur(radius: 6)
+                // Mascot + instruction grouped together (text near the picture)
+                VStack(spacing: 16) {
+                    ZStack {
+                        Circle()
+                            .fill(RadialGradient(
+                                colors: [BeamingPalette.yellow.opacity(0.5), .clear],
+                                center: .center,
+                                startRadius: 0,
+                                endRadius: 160
+                            ))
+                            .frame(width: 300, height: 300)
+                            .blur(radius: 6)
 
-                    Image("MascotMeeting")
-                        .resizable()
-                        .scaledToFit()
-                        .frame(height: 240)
-                        .accessibilityHidden(true)
+                        Image("MascotMeeting")
+                            .resizable()
+                            .scaledToFit()
+                            .frame(height: 220)
+                            .accessibilityHidden(true)
+                    }
+
+                    VStack(spacing: 6) {
+                        Text("Letakkan HP di atas meja dengan layar menghadap ke bawah!")
+                            .font(.system(size: 17, weight: .semibold))
+                            .tracking(-0.43)
+                            .multilineTextAlignment(.center)
+                            .foregroundStyle(.black)
+                        Text("Lampu akan menyala untuk menunjukkan siapa yang sedang berbicara.")
+                            .font(.system(size: 15))
+                            .tracking(-0.2)
+                            .multilineTextAlignment(.center)
+                            .foregroundStyle(.secondary)
+                    }
+                    .padding(.horizontal, 44)
                 }
 
-                Spacer()
+                Spacer(minLength: 0)
 
-                VStack(spacing: 6) {
-                    Text("Letakkan HP di atas meja dengan layar menghadap ke bawah!")
-                        .font(.system(size: 17, weight: .semibold))
-                        .tracking(-0.43)
-                        .multilineTextAlignment(.center)
-                        .foregroundStyle(.black)
-                    Text("Lampu akan menyala untuk menunjukkan siapa yang sedang berbicara.")
-                        .font(.system(size: 15))
-                        .tracking(-0.2)
-                        .multilineTextAlignment(.center)
-                        .foregroundStyle(.secondary)
+                // Standalone QR pill button
+                Button {
+                    showHostQR = true
+                } label: {
+                    HStack(spacing: 8) {
+                        Image(systemName: "qrcode.viewfinder")
+                        Text("Tunjukkan Kode QR")
+                    }
                 }
-                .padding(.horizontal, 44)
+                .buttonStyle(PrimaryButtonStyle())
+                .padding(.horizontal, 24)
                 .padding(.bottom, 36)
             }
         }
