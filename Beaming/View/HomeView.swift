@@ -3,140 +3,133 @@
 //  Beaming
 //
 //  Created by Christopher Hardy Gunawan on 02/07/26.
-//  Redesigned for Hi-Fi by Beaming Team, July 2026.
 //
 
 import SwiftUI
 
+/// The Home screen: branded greeting + two action cards (Create / Join via QR).
 struct HomeView: View {
     @Environment(AppState.self) private var appState
     @State private var viewModel: HomeViewModel?
-    @State private var showPermission: Bool = false
-    @State private var showQRScanner: Bool = false
 
     var body: some View {
         Group {
             if let viewModel = viewModel {
                 homeContent(viewModel: viewModel)
             } else {
-                ProgressView()
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .background(Color.white)
+                Color.white.ignoresSafeArea()
+                    .overlay(ProgressView().tint(BeamingPalette.green))
             }
         }
         .onAppear {
-            if viewModel == nil, let user = appState.currentUser {
-                let vm = HomeViewModel(currentUser: user)
-                self.viewModel = vm
-                vm.startDiscovery()
-            } else if let vm = viewModel {
-                vm.resetAfterMeeting()
+            if viewModel == nil {
+                viewModel = HomeViewModel(user: appState.currentUser)
             }
+            viewModel?.onAppear()
         }
     }
 
     @ViewBuilder
     private func homeContent(viewModel: HomeViewModel) -> some View {
         ZStack {
-            // MARK: Background blobs
             Color.white.ignoresSafeArea()
 
-            GeometryReader { geo in
-                Circle()
-                    .fill(
-                        RadialGradient(
-                            colors: [Color(red: 0.58, green: 0.95, blue: 0.81).opacity(0.45), .clear],
-                            center: .center,
-                            startRadius: 0,
-                            endRadius: 280
-                        )
-                    )
-                    .frame(width: 560, height: 560)
-                    .offset(x: geo.size.width - 180, y: -100)
+            BlobShape()
+                .fill(BeamingPalette.blob)
+                .frame(width: 360, height: 360)
+                .blur(radius: 50)
+                .opacity(0.45)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
+                .offset(x: 140, y: -150)
 
-                Circle()
-                    .fill(
-                        RadialGradient(
-                            colors: [Color(red: 0.87, green: 0.93, blue: 0.60).opacity(0.35), .clear],
-                            center: .center,
-                            startRadius: 0,
-                            endRadius: 220
-                        )
-                    )
-                    .frame(width: 440, height: 440)
-                    .offset(x: -160, y: geo.size.height - 280)
-            }
-            .ignoresSafeArea()
+            BlobShape()
+                .fill(BeamingPalette.blob)
+                .frame(width: 360, height: 360)
+                .blur(radius: 50)
+                .opacity(0.35)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading)
+                .offset(x: -150, y: 180)
+
+            // Big hero mascot behind the content, top-right
+            Image("MascotHome")
+                .resizable()
+                .scaledToFit()
+                .frame(height: 430)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
+                .offset(x: 28, y: -18)
+                .accessibilityHidden(true)
 
             VStack(spacing: 0) {
-                // MARK: Header greeting
-                VStack(alignment: .leading, spacing: 4) {
-                    Group {
-                        Text("Selamat Datang di ")
-                            .font(.system(size: 26, weight: .bold, design: .rounded))
-                            .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
-                        + Text("Beaming!")
-                            .font(.system(size: 26, weight: .bold, design: .rounded))
-                            .foregroundColor(Color(red: 0.0, green: 0.58, blue: 0.93))
-                    }
-
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Selamat Datang di")
+                        .font(.system(size: 34, weight: .bold))
+                        .tracking(0.4)
+                        .foregroundStyle(.black)
+                    Text("Beaming!")
+                        .font(.system(size: 34, weight: .bold))
+                        .tracking(0.4)
+                        .foregroundStyle(BeamingPalette.wordmark)
                     Text("Siap untuk diskusi selanjutnya?")
-                        .font(.system(size: 15, weight: .regular))
-                        .foregroundColor(Color(red: 0.45, green: 0.45, blue: 0.45))
+                        .font(.system(size: 17))
+                        .tracking(-0.43)
+                        .foregroundStyle(.black)
+                        .padding(.top, 10)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.horizontal, 24)
+                .padding(.horizontal, 26)
                 .padding(.top, 64)
 
-                Spacer()
+                Spacer(minLength: 24)
 
-                // MARK: Mascot
-                BeamingMascot(happy: false)
-                    .frame(width: 130, height: 130)
-                    .padding(.bottom, 8)
-
-                Spacer()
-
-                // MARK: Action Cards
-                VStack(spacing: 14) {
-                    // Card 1: Mulai diskusi (host)
-                    Button {
-                        showPermission = true
-                    } label: {
-                        HomeActionCard(
-                            icon: "plus",
-                            iconBgColor: Color(red: 0.0, green: 0.58, blue: 0.93).opacity(0.12),
-                            iconColor: Color(red: 0.0, green: 0.58, blue: 0.93),
-                            title: "Mulai diskusi",
-                            titleColor: Color(red: 0.0, green: 0.58, blue: 0.93),
-                            isLoading: false
-                        )
+                VStack(spacing: 16) {
+                    HomeActionCard(
+                        symbol: "plus",
+                        title: "Mulai diskusi",
+                        accent: BeamingPalette.blue,
+                        chipBg: BeamingPalette.blue.opacity(0.1)
+                    ) {
+                        viewModel.didTapCreate()
                     }
-                    .buttonStyle(.plain)
-                    .disabled(viewModel.isJoining)
 
-                    // Card 2: Scan QR
-                    Button {
-                        showQRScanner = true
-                    } label: {
-                        HomeActionCard(
-                            icon: "qrcode.viewfinder",
-                            iconBgColor: Color(red: 0.41, green: 0.73, blue: 0.61).opacity(0.18),
-                            iconColor: Color(red: 0.41, green: 0.73, blue: 0.61),
-                            title: "Scan Kode QR untuk bergabung",
-                            titleColor: Color(red: 0.41, green: 0.73, blue: 0.61),
-                            isLoading: viewModel.isJoining
-                        )
+                    HomeActionCard(
+                        symbol: "qrcode.viewfinder",
+                        title: "Scan QR untuk bergabung",
+                        accent: BeamingPalette.green,
+                        chipBg: BeamingPalette.greenTint.opacity(0.35)
+                    ) {
+                        viewModel.didTapJoin()
                     }
-                    .buttonStyle(.plain)
-                    .disabled(viewModel.isJoining)
                 }
                 .padding(.horizontal, 24)
-                .padding(.bottom, 52)
+                .padding(.bottom, 48)
+            }
+
+            if viewModel.isConnecting {
+                Color.black.opacity(0.25).ignoresSafeArea()
+                ProgressView("Menghubungkan…")
+                    .tint(.white)
             }
         }
-        .navigationBarHidden(true)
-        // MARK: Navigation to Meeting
+        .toolbar(.hidden, for: .navigationBar)
+        .sheet(isPresented: Binding(
+            get: { viewModel.showPermission },
+            set: { viewModel.showPermission = $0 }
+        )) {
+            PermissionSheet(
+                onAllow: { viewModel.permissionAllowed() },
+                onClose: { viewModel.cancelFlow() }
+            )
+            .presentationDetents([.fraction(0.72), .large])
+        }
+        .sheet(isPresented: Binding(
+            get: { viewModel.showQRScanner },
+            set: { viewModel.showQRScanner = $0 }
+        )) {
+            QRScannerView(
+                onScan: { viewModel.joinWithCode($0) },
+                onClose: { viewModel.showQRScanner = false }
+            )
+        }
         .navigationDestination(isPresented: Binding(
             get: { viewModel.navigateToMeeting },
             set: { viewModel.navigateToMeeting = $0 }
@@ -146,22 +139,7 @@ struct HomeView: View {
                     .environment(appState)
             }
         }
-        // MARK: Permission sheet (Mulai diskusi path)
-        .sheet(isPresented: $showPermission) {
-            PermissionView {
-                showPermission = false
-                viewModel.createRoom()
-            }
-        }
-        // MARK: QR Scanner sheet
-        .sheet(isPresented: $showQRScanner) {
-            QRScannerView { scannedString in
-                showQRScanner = false
-                viewModel.joinRoomFromQR(qrString: scannedString)
-            }
-        }
-        // MARK: Alert
-        .alert("Notifikasi", isPresented: Binding(
+        .alert("Beaming", isPresented: Binding(
             get: { viewModel.showAlert },
             set: { viewModel.showAlert = $0 }
         )) {
@@ -169,57 +147,37 @@ struct HomeView: View {
         } message: {
             Text(viewModel.alertMessage)
         }
-        // MARK: Return to Home when meeting ends
-        .onChange(of: viewModel.activeMeetingVM?.shouldDismiss) { _, newValue in
-            if newValue == true {
-                viewModel.navigateToMeeting = false
-                viewModel.resetAfterMeeting()
-            }
-        }
     }
 }
 
-// MARK: - Action Card Component
+// MARK: - Action card
 
-struct HomeActionCard: View {
-    let icon: String
-    let iconBgColor: Color
-    let iconColor: Color
+private struct HomeActionCard: View {
+    let symbol: String
     let title: String
-    let titleColor: Color
-    var isLoading: Bool = false
+    let accent: Color
+    let chipBg: Color
+    let action: () -> Void
 
     var body: some View {
-        HStack(spacing: 16) {
-            // Icon circle
-            ZStack {
-                Circle()
-                    .fill(iconBgColor)
-                    .frame(width: 64, height: 64)
-
-                if isLoading {
-                    ProgressView()
-                        .tint(iconColor)
-                        .scaleEffect(1.1)
-                } else {
-                    Image(systemName: icon)
-                        .font(.system(size: 26, weight: .medium))
-                        .foregroundColor(iconColor)
-                }
+        Button(action: action) {
+            VStack(spacing: 14) {
+                Image(systemName: symbol)
+                    .font(.system(size: 26, weight: .semibold))
+                    .foregroundStyle(accent)
+                    .frame(width: 56, height: 56)
+                    .background(chipBg)
+                    .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                Text(title)
+                    .font(.system(size: 17, weight: .semibold))
+                    .tracking(-0.43)
+                    .foregroundStyle(accent)
             }
-
-            Text(title)
-                .font(.system(size: 16, weight: .semibold))
-                .foregroundColor(titleColor)
-                .multilineTextAlignment(.leading)
-
-            Spacer()
+            .frame(maxWidth: .infinity)
+            .frame(height: 156)
+            .beamingCard()
         }
-        .padding(.horizontal, 20)
-        .padding(.vertical, 20)
-        .background(Color.white)
-        .clipShape(RoundedRectangle(cornerRadius: 20))
-        .shadow(color: Color.black.opacity(0.07), radius: 12, x: 0, y: 4)
+        .buttonStyle(.plain)
     }
 }
 

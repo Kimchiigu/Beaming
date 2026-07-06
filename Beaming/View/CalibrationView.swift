@@ -2,274 +2,212 @@
 //  CalibrationView.swift
 //  Beaming
 //
-//  Created by Christopher Hardy Gunawan on 02/07/26.
-//  Redesigned for Hi-Fi by Beaming Team, July 2026.
+//  3-step voice calibration: Intro → (active) Loading → Done.
+//  Wraps the existing AudioManager 3.5-second RMS calibration.
 //
 
 import SwiftUI
 
-/// Full-screen calibration overlay shown at the start of every meeting.
-/// Three states: idle → active (listening) → done.
 struct CalibrationView: View {
-    var viewModel: MeetingViewModel
+    @State var viewModel: MeetingViewModel
 
-    // Waveform animation
-    @State private var wavePhase: CGFloat = 0
-    @State private var waveTimer: Timer? = nil
+    private let phrase = "Halo semua, saya siap untuk mengikuti diskusi ini"
 
     var body: some View {
         ZStack {
-            // MARK: Background
             Color.white.ignoresSafeArea()
 
-            GeometryReader { geo in
-                // Top-right mint blob
-                Circle()
-                    .fill(
-                        RadialGradient(
-                            colors: [Color(red: 0.58, green: 0.95, blue: 0.81).opacity(0.50), .clear],
-                            center: .center, startRadius: 0, endRadius: 240
-                        )
-                    )
-                    .frame(width: 480, height: 480)
-                    .offset(x: geo.size.width - 140, y: -100)
+            BlobShape()
+                .fill(BeamingPalette.blob)
+                .frame(width: 360, height: 360)
+                .blur(radius: 50)
+                .opacity(0.4)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
+                .offset(x: 150, y: -170)
+            BlobShape()
+                .fill(BeamingPalette.blob)
+                .frame(width: 360, height: 360)
+                .blur(radius: 50)
+                .opacity(0.3)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading)
+                .offset(x: -150, y: 200)
 
-                // Bottom-left yellow-green blob
-                Circle()
-                    .fill(
-                        RadialGradient(
-                            colors: [Color(red: 0.87, green: 0.93, blue: 0.60).opacity(0.40), .clear],
-                            center: .center, startRadius: 0, endRadius: 200
-                        )
-                    )
-                    .frame(width: 400, height: 400)
-                    .offset(x: -140, y: geo.size.height - 260)
-            }
-            .ignoresSafeArea()
+            VStack(spacing: 0) {
+                calibrationToolbar
 
-            // MARK: Content
-            if viewModel.isCalibrationDone {
-                calibrationDoneView
-            } else if viewModel.audioManager.isCalibrating {
-                calibrationActiveView
-            } else {
-                calibrationIdleView
-            }
-        }
-    }
+                HStack(spacing: 9) {
+                    Image(systemName: "lines.measurement.horizontal")
+                        .font(.system(size: 22))
+                    Text("Kalibrasi suara")
+                        .font(.system(size: 22, weight: .bold))
+                        .tracking(-0.26)
+                }
+                .foregroundStyle(.black)
+                .padding(.top, 28)
 
-    // MARK: - Idle State
+                Image(viewModel.isCalibrationDone ? "MascotDone" : "MascotCalibrate")
+                    .resizable()
+                    .scaledToFit()
+                    .frame(height: 150)
+                    .padding(.top, 8)
+                    .accessibilityHidden(true)
 
-    private var calibrationIdleView: some View {
-        VStack(spacing: 0) {
-            Spacer()
+                Spacer(minLength: 12)
 
-            // Mascot
-            BeamingMascot(happy: false)
-                .frame(width: 130, height: 130)
-                .padding(.bottom, 28)
-
-            // Heading
-            HStack(spacing: 8) {
-                Image(systemName: "waveform")
-                    .font(.system(size: 22, weight: .medium))
-                    .foregroundColor(Color(red: 0.0, green: 0.58, blue: 0.93))
-                Text("Kalibrasi suara")
-                    .font(.system(size: 24, weight: .bold, design: .rounded))
-                    .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
-            }
-            .padding(.bottom, 12)
-
-            Text("Baca kalimat di bawah ini dengan suara normal kamu")
-                .font(.system(size: 15, weight: .regular))
-                .foregroundColor(Color(red: 0.45, green: 0.45, blue: 0.45))
-                .multilineTextAlignment(.center)
-                .padding(.horizontal, 36)
-                .padding(.bottom, 32)
-
-            // Phrase card
-            PhraseCard(phrase: "\"Halo semua, saya siap untuk mengikuti diskusi ini\"")
-                .padding(.horizontal, 28)
-                .padding(.bottom, 48)
-
-            Spacer()
-
-            // CTA button
-            Button {
-                startCalibration()
-            } label: {
-                Text("Mulai Kalibrasi")
-                    .font(.system(size: 17, weight: .semibold))
-                    .foregroundColor(.white)
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 56)
-                    .background(Color(red: 0.41, green: 0.73, blue: 0.61))
-                    .clipShape(RoundedRectangle(cornerRadius: 28))
-            }
-            .padding(.horizontal, 28)
-            .padding(.bottom, 52)
-        }
-    }
-
-    // MARK: - Active State
-
-    private var calibrationActiveView: some View {
-        VStack(spacing: 0) {
-            Spacer()
-
-            // Animated mascot (slightly bouncing)
-            BeamingMascot(happy: false)
-                .frame(width: 130, height: 130)
-                .scaleEffect(1.0 + sin(wavePhase) * 0.03)
-                .padding(.bottom, 28)
-
-            Text("Sedang mendengarkan…")
-                .font(.system(size: 22, weight: .bold, design: .rounded))
-                .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
-                .padding(.bottom, 6)
-
-            Text("silahkan mulai berbicara")
-                .font(.system(size: 15, weight: .regular))
-                .foregroundColor(Color(red: 0.45, green: 0.45, blue: 0.45))
-                .padding(.bottom, 32)
-
-            // Phrase card
-            PhraseCard(phrase: "\"Halo semua, saya siap untuk mengikuti diskusi ini\"")
-                .padding(.horizontal, 28)
-                .padding(.bottom, 32)
-
-            // Waveform bars
-            WaveformBars(
-                audioLevel: viewModel.audioManager.audioLevel,
-                phase: wavePhase
-            )
-            .frame(height: 64)
-            .padding(.horizontal, 40)
-            .padding(.bottom, 24)
-
-            // Progress bar
-            VStack(alignment: .leading, spacing: 8) {
-                HStack {
-                    Text("Menganalisa suaramu…")
-                        .font(.system(size: 13, weight: .regular))
-                        .foregroundColor(Color(red: 0.45, green: 0.45, blue: 0.45))
-                    Spacer()
-                    Text("\(Int(viewModel.audioManager.calibrationProgress * 100))%")
-                        .font(.system(size: 13, weight: .semibold))
-                        .foregroundColor(Color(red: 0.41, green: 0.73, blue: 0.61))
+                if viewModel.isCalibrationDone {
+                    doneState
+                } else if viewModel.audioManager.isCalibrating {
+                    loadingState
+                } else {
+                    introState
                 }
 
-                GeometryReader { geo in
-                    ZStack(alignment: .leading) {
-                        RoundedRectangle(cornerRadius: 4)
-                            .fill(Color(red: 0.90, green: 0.93, blue: 0.91))
-                            .frame(height: 6)
-
-                        RoundedRectangle(cornerRadius: 4)
-                            .fill(Color(red: 0.41, green: 0.73, blue: 0.61))
-                            .frame(width: geo.size.width * CGFloat(viewModel.audioManager.calibrationProgress), height: 6)
-                            .animation(.linear(duration: 0.1), value: viewModel.audioManager.calibrationProgress)
-                    }
-                }
-                .frame(height: 6)
+                Spacer(minLength: 12)
             }
-            .padding(.horizontal, 28)
-
-            Spacer()
-        }
-        .onAppear { startWaveTimer() }
-        .onDisappear { stopWaveTimer() }
-    }
-
-    // MARK: - Done State
-
-    private var calibrationDoneView: some View {
-        VStack(spacing: 0) {
-            Spacer()
-
-            // Happy mascot
-            BeamingMascot(happy: true)
-                .frame(width: 140, height: 140)
-                .padding(.bottom, 28)
-                .transition(.scale.combined(with: .opacity))
-                .animation(.spring(response: 0.5, dampingFraction: 0.65), value: viewModel.isCalibrationDone)
-
-            Text("Kalibrasi suara selesai!")
-                .font(.system(size: 24, weight: .bold, design: .rounded))
-                .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
-                .padding(.bottom, 10)
-
-            Text("Mikrophone kamu sudah siap")
-                .font(.system(size: 16, weight: .regular))
-                .foregroundColor(Color(red: 0.45, green: 0.45, blue: 0.45))
-
-            Spacer()
-        }
-    }
-
-    // MARK: - Helpers
-
-    private func startCalibration() {
-        startWaveTimer()
-        viewModel.startCalibration()
-    }
-
-    private func startWaveTimer() {
-        waveTimer?.invalidate()
-        waveTimer = Timer.scheduledTimer(withTimeInterval: 0.05, repeats: true) { _ in
-            wavePhase += 0.15
-        }
-    }
-
-    private func stopWaveTimer() {
-        waveTimer?.invalidate()
-        waveTimer = nil
-    }
-}
-
-// MARK: - Phrase Card
-
-struct PhraseCard: View {
-    let phrase: String
-
-    var body: some View {
-        Text(phrase)
-            .font(.system(size: 17, weight: .medium))
-            .foregroundColor(Color(red: 0.15, green: 0.15, blue: 0.15))
-            .multilineTextAlignment(.center)
             .padding(.horizontal, 24)
-            .padding(.vertical, 20)
-            .frame(maxWidth: .infinity)
-            .background(Color.white)
-            .clipShape(RoundedRectangle(cornerRadius: 18))
-            .shadow(color: Color.black.opacity(0.08), radius: 12, x: 0, y: 4)
+            .padding(.bottom, 36)
+            .foregroundStyle(.black)
+        }
+        .toolbar(.hidden, for: .navigationBar)
+    }
+
+    // MARK: - Toolbar
+
+    private var calibrationToolbar: some View {
+        ZStack {
+            Text("Kalibrasi")
+                .font(.system(size: 17, weight: .semibold))
+                .tracking(-0.43)
+            HStack {
+                Button {
+                    viewModel.leaveRoom()
+                } label: {
+                    Image(systemName: "chevron.backward")
+                        .font(.system(size: 17, weight: .semibold))
+                        .foregroundStyle(.black)
+                        .frame(width: 40, height: 40)
+                        .background(.ultraThinMaterial)
+                        .clipShape(Circle())
+                }
+                Spacer()
+            }
+        }
+        .padding(.horizontal, 12)
+        .padding(.top, 8)
+        .frame(height: 52)
+    }
+
+    // MARK: - Intro
+
+    private var introState: some View {
+        VStack(spacing: 20) {
+            VStack(spacing: 18) {
+                Text("Baca kalimat di bawah ini dengan suara normal kamu")
+                    .font(.system(size: 16, weight: .semibold))
+                    .tracking(-0.31)
+                    .multilineTextAlignment(.center)
+                    .foregroundStyle(.black)
+
+                HStack(spacing: 0) {
+                    Rectangle()
+                        .fill(BeamingPalette.green)
+                        .frame(width: 4)
+                    Text("\u{201C}\(phrase)\u{201D}")
+                        .font(.system(size: 20, weight: .bold))
+                        .tracking(-0.26)
+                        .foregroundStyle(BeamingPalette.green)
+                        .multilineTextAlignment(.center)
+                        .padding(.vertical, 24)
+                        .padding(.horizontal, 16)
+                        .frame(maxWidth: .infinity)
+                }
+                .background(Color(hex: 0xF6F6F6))
+                .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+
+                WaveformView(level: 0, isLive: false)
+            }
+            .padding(20)
+            .beamingCard()
+
+            Button("Mulai Kalibrasi") {
+                viewModel.startCalibration()
+            }
+            .buttonStyle(PrimaryButtonStyle())
+        }
+    }
+
+    // MARK: - Loading
+
+    private var loadingState: some View {
+        VStack(spacing: 18) {
+            Text("Mendengarkan… ucapkan kalimatnya")
+                .font(.system(size: 16, weight: .semibold))
+                .foregroundStyle(.black)
+
+            ProgressView(value: Double(viewModel.audioManager.calibrationProgress))
+                .tint(BeamingPalette.green)
+
+            WaveformView(level: viewModel.audioManager.audioLevel, isLive: true)
+
+            Text("\u{201C}\(phrase)\u{201D}")
+                .font(.system(size: 15))
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+        }
+        .padding(20)
+        .beamingCard()
+    }
+
+    // MARK: - Done
+
+    private var doneState: some View {
+        VStack(spacing: 12) {
+            Image(systemName: "checkmark.circle.fill")
+                .font(.system(size: 60))
+                .foregroundStyle(BeamingPalette.green)
+            Text("Kalibrasi Selesai!")
+                .font(.system(size: 22, weight: .bold))
+                .foregroundStyle(.black)
+            Text("Mikrofon kamu sudah siap.")
+                .font(.system(size: 15))
+                .foregroundStyle(.secondary)
+        }
     }
 }
 
-// MARK: - Waveform Bars
+// MARK: - Waveform
 
-struct WaveformBars: View {
-    let audioLevel: Float
-    let phase: CGFloat
+private struct WaveformView: View {
+    let level: Float
+    let isLive: Bool
 
-    private let barCount = 20
-    private let minBarHeight: CGFloat = 6
-    private let maxBarHeight: CGFloat = 56
+    private let heights: [CGFloat] = [30, 16, 48, 16, 30, 16, 30]
 
     var body: some View {
-        HStack(spacing: 4) {
-            ForEach(0..<barCount, id: \.self) { index in
-                let position = CGFloat(index) / CGFloat(barCount)
-                let waveHeight = sin(phase + position * .pi * 2) * 0.5 + 0.5
-                let levelBoost = CGFloat(min(audioLevel * 12, 1.0))
-                let barHeight = minBarHeight + (maxBarHeight - minBarHeight) * waveHeight * max(levelBoost, 0.25)
-
-                RoundedRectangle(cornerRadius: 3)
-                    .fill(Color(red: 0.41, green: 0.73, blue: 0.61))
-                    .frame(maxWidth: .infinity)
-                    .frame(height: barHeight)
-                    .animation(.easeInOut(duration: 0.08), value: barHeight)
+        HStack(spacing: 8) {
+            ForEach(heights.indices, id: \.self) { i in
+                RoundedRectangle(cornerRadius: 6)
+                    .fill(BeamingPalette.waveform)
+                    .frame(width: 8, height: barHeight(i))
             }
         }
+        .frame(height: 60)
     }
+
+    private func barHeight(_ i: Int) -> CGFloat {
+        guard isLive else { return heights[i % heights.count] }
+        let normalized = max(0, min(1, CGFloat(level) * 18))
+        let base = heights[i % heights.count]
+        return max(8, base * (0.4 + normalized))
+    }
+}
+
+#Preview {
+    CalibrationView(
+        viewModel: MeetingViewModel(
+            localUser: User(name: "Preview"),
+            networkManager: NetworkManager(),
+            asHost: true
+        )
+    )
 }

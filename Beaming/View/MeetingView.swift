@@ -3,187 +3,173 @@
 //  Beaming
 //
 //  Created by Christopher Hardy Gunawan on 02/07/26.
-//  Redesigned for Hi-Fi by Beaming Team, July 2026.
 //
 
 import SwiftUI
 
+/// The active discussion ("Mode Diskusi"). Interface is identical for host and
+/// guest. The host's join-QR auto-opens at half height once calibration ends,
+/// and is also available from the more-menu.
 struct MeetingView: View {
-    var viewModel: MeetingViewModel
-
     @Environment(AppState.self) private var appState
-    @State private var showOptions: Bool = false
-    @State private var showQRCode: Bool = false
-    @State private var showLeaveConfirm: Bool = false
+    @Environment(\.dismiss) private var dismiss
+    @State var viewModel: MeetingViewModel
+    @State private var showHostQR = false
+    @State private var didAutoShowQR = false
 
     var body: some View {
         ZStack {
-            // MARK: Background
-            Color.white.ignoresSafeArea()
+            discussionContent
 
-            GeometryReader { geo in
-                Circle()
-                    .fill(
-                        RadialGradient(
-                            colors: [Color(red: 0.58, green: 0.95, blue: 0.81).opacity(0.40), .clear],
-                            center: .center, startRadius: 0, endRadius: 260
-                        )
-                    )
-                    .frame(width: 520, height: 520)
-                    .offset(x: geo.size.width - 150, y: -80)
-
-                Circle()
-                    .fill(
-                        RadialGradient(
-                            colors: [Color(red: 0.87, green: 0.93, blue: 0.60).opacity(0.35), .clear],
-                            center: .center, startRadius: 0, endRadius: 200
-                        )
-                    )
-                    .frame(width: 400, height: 400)
-                    .offset(x: -130, y: geo.size.height - 240)
-            }
-            .ignoresSafeArea()
-
-            VStack(spacing: 0) {
-                // MARK: Top bar
-                HStack {
-                    // Participant count badge
-                    HStack(spacing: 6) {
-                        Image(systemName: "person.2.fill")
-                            .font(.system(size: 14, weight: .medium))
-                            .foregroundColor(Color(red: 0.41, green: 0.73, blue: 0.61))
-                        Text("\(viewModel.room.participants.count) orang di dalam diskusi")
-                            .font(.system(size: 14, weight: .medium))
-                            .foregroundColor(Color(red: 0.3, green: 0.3, blue: 0.3))
-                    }
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 8)
-                    .background(Color.white.opacity(0.9))
-                    .clipShape(RoundedRectangle(cornerRadius: 20))
-                    .shadow(color: Color.black.opacity(0.06), radius: 6, x: 0, y: 2)
-
-                    Spacer()
-
-                    // Three-dot menu
-                    Button {
-                        showOptions = true
-                    } label: {
-                        Image(systemName: "ellipsis")
-                            .font(.system(size: 18, weight: .semibold))
-                            .foregroundColor(Color(red: 0.3, green: 0.3, blue: 0.3))
-                            .frame(width: 40, height: 40)
-                            .background(Color.white.opacity(0.9))
-                            .clipShape(Circle())
-                            .shadow(color: Color.black.opacity(0.06), radius: 6, x: 0, y: 2)
-                    }
-                }
-                .padding(.horizontal, 24)
-                .padding(.top, 60)
-
-                Spacer()
-
-                // MARK: Mode Diskusi content
-                VStack(spacing: 0) {
-                    // Group mascot (group of 3 smaller mascots)
-                    GroupMascot()
-                        .frame(height: 140)
-                        .padding(.bottom, 28)
-
-                    Text("Mode Diskusi")
-                        .font(.system(size: 26, weight: .bold, design: .rounded))
-                        .foregroundColor(Color(red: 0.1, green: 0.1, blue: 0.1))
-                        .padding(.bottom, 14)
-
-                    Text("Letakkan HP di atas meja dengan layar menghadap ke bawah!")
-                        .font(.system(size: 16, weight: .semibold))
-                        .foregroundColor(Color(red: 0.2, green: 0.2, blue: 0.2))
-                        .multilineTextAlignment(.center)
-                        .padding(.horizontal, 32)
-                        .padding(.bottom, 10)
-
-                    Text("Lampu akan menyala untuk menunjukkan siapa yang sedang berbicara.")
-                        .font(.system(size: 14, weight: .regular))
-                        .foregroundColor(Color(red: 0.50, green: 0.50, blue: 0.50))
-                        .multilineTextAlignment(.center)
-                        .padding(.horizontal, 36)
-                }
-
-                Spacer()
-            }
-
-            // MARK: Face-down battery-saver overlay
-            if viewModel.isFaceDown && !viewModel.showCalibration {
-                FaceDownView()
-                    .transition(.opacity)
-                    .zIndex(5)
-            }
-
-            // MARK: Calibration overlay
             if viewModel.showCalibration {
                 CalibrationView(viewModel: viewModel)
                     .transition(.opacity)
-                    .zIndex(10)
+            }
+
+            if viewModel.isFaceDown && !viewModel.showCalibration {
+                FaceDownView()
+                    .transition(.opacity)
             }
         }
-        .navigationBarHidden(true)
-        // MARK: Options action sheet
-        .confirmationDialog("", isPresented: $showOptions, titleVisibility: .hidden) {
-            Button("Lihat Kode QR") {
-                showQRCode = true
+        .navigationTitle("Mode Diskusi")
+        .navigationBarTitleDisplayMode(.inline)
+        // Hide the nav bar while calibrating or face-down so overlays cover fully.
+        .toolbar((viewModel.isFaceDown || viewModel.showCalibration) ? .hidden : .visible,
+                 for: .navigationBar)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Menu {
+                    Button {
+                        showHostQR = true
+                    } label: {
+                        Label("Kode QR", systemImage: "qrcode")
+                    }
+                    Button(role: .destructive) {
+                        viewModel.leaveRoom()
+                    } label: {
+                        Label("Keluar", systemImage: "rectangle.portrait.and.arrow.right")
+                    }
+                } label: {
+                    Image(systemName: "ellipsis.circle")
+                }
             }
-            Button("Keluar Diskusi", role: .destructive) {
-                showLeaveConfirm = true
+        }
+        .animation(.easeInOut(duration: 0.25), value: viewModel.isFaceDown)
+        .animation(.easeInOut(duration: 0.25), value: viewModel.showCalibration)
+        // Host: auto-present the QR (half sheet) the moment calibration ends.
+        .onChange(of: viewModel.showCalibration) { _, stillCalibrating in
+            if !stillCalibrating && viewModel.isHost && !didAutoShowQR {
+                didAutoShowQR = true
+                showHostQR = true
             }
-            Button("Batal", role: .cancel) { }
         }
-        // MARK: QR Code sheet
-        .sheet(isPresented: $showQRCode) {
-            QRCodeDisplayView(qrCodeString: viewModel.qrCodeString)
-                .presentationDetents([.medium, .large])
-        }
-        // MARK: Leave confirmation
-        .alert("Keluar Diskusi?", isPresented: $showLeaveConfirm) {
-            Button("Keluar", role: .destructive) {
-                viewModel.leaveRoom()
+        .sheet(isPresented: $showHostQR) {
+            QRShareSheet(code: viewModel.qrCodeString) {
+                showHostQR = false
             }
-            Button("Batal", role: .cancel) { }
-        } message: {
-            Text("Kamu akan keluar dari diskusi ini.")
         }
-        // MARK: Error alert
-        .alert("Notifikasi", isPresented: Binding(
-            get: { viewModel.showAlert },
-            set: { viewModel.showAlert = $0 }
-        )) {
-            Button("OK", role: .cancel) { }
+        .onDisappear {
+            viewModel.leaveRoom()
+        }
+        .onChange(of: viewModel.shouldDismiss) { _, shouldDismiss in
+            if shouldDismiss { dismiss() }
+        }
+        .alert("Beaming", isPresented: $viewModel.showAlert) {
+            Button("OK", role: .cancel) {
+                if viewModel.shouldDismiss { dismiss() }
+            }
         } message: {
             Text(viewModel.alertMessage)
         }
-        .onChange(of: viewModel.shouldDismiss) { _, newValue in
-            // Handled by NavigationStack pop in HomeView
+    }
+
+    // MARK: - Discussion content (identical for host & guest)
+
+    private var discussionContent: some View {
+        ZStack {
+            Color.white.ignoresSafeArea()
+
+            BlobShape()
+                .fill(BeamingPalette.blob)
+                .frame(width: 360, height: 360)
+                .blur(radius: 50)
+                .opacity(0.35)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
+                .offset(x: 150, y: -170)
+            BlobShape()
+                .fill(BeamingPalette.blob)
+                .frame(width: 360, height: 360)
+                .blur(radius: 50)
+                .opacity(0.3)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading)
+                .offset(x: -150, y: 200)
+
+            VStack(spacing: 0) {
+                HStack(spacing: 8) {
+                    Image(systemName: "person.2.fill")
+                        .font(.system(size: 15))
+                    Text("\(viewModel.room.participantCount) orang di dalam diskusi")
+                        .font(.system(size: 16))
+                        .tracking(-0.43)
+                }
+                .foregroundStyle(Color(hex: 0x75777A))
+                .padding(.horizontal, 18)
+                .padding(.vertical, 10)
+                .background(Color.white)
+                .clipShape(Capsule())
+                .shadow(color: .black.opacity(0.08), radius: 8, y: 2)
+                .padding(.top, 12)
+
+                Spacer()
+
+                ZStack {
+                    Circle()
+                        .fill(RadialGradient(
+                            colors: [BeamingPalette.yellow.opacity(0.5), .clear],
+                            center: .center,
+                            startRadius: 0,
+                            endRadius: 160
+                        ))
+                        .frame(width: 300, height: 300)
+                        .blur(radius: 6)
+
+                    Image("MascotMeeting")
+                        .resizable()
+                        .scaledToFit()
+                        .frame(height: 240)
+                        .accessibilityHidden(true)
+                }
+
+                Spacer()
+
+                VStack(spacing: 6) {
+                    Text("Letakkan HP di atas meja dengan layar menghadap ke bawah!")
+                        .font(.system(size: 17, weight: .semibold))
+                        .tracking(-0.43)
+                        .multilineTextAlignment(.center)
+                        .foregroundStyle(.black)
+                    Text("Lampu akan menyala untuk menunjukkan siapa yang sedang berbicara.")
+                        .font(.system(size: 15))
+                        .tracking(-0.2)
+                        .multilineTextAlignment(.center)
+                        .foregroundStyle(.secondary)
+                }
+                .padding(.horizontal, 44)
+                .padding(.bottom, 36)
+            }
         }
     }
 }
 
-// MARK: - Group Mascot (3 mascots side by side)
-
-struct GroupMascot: View {
-    var body: some View {
-        HStack(alignment: .bottom, spacing: -20) {
-            // Left mascot (smaller)
-            BeamingMascot(happy: false)
-                .frame(width: 80, height: 80)
-                .offset(y: 10)
-
-            // Center mascot (larger)
-            BeamingMascot(happy: false)
-                .frame(width: 110, height: 110)
-
-            // Right mascot (smaller, slightly different tint)
-            BeamingMascot(happy: false)
-                .frame(width: 80, height: 80)
-                .offset(y: 10)
-                .colorMultiply(Color(red: 0.96, green: 0.85, blue: 0.65))
-        }
+#Preview {
+    NavigationStack {
+        MeetingView(
+            viewModel: MeetingViewModel(
+                localUser: User(name: "Preview"),
+                networkManager: NetworkManager(),
+                asHost: true
+            )
+        )
+        .environment(AppState())
     }
 }

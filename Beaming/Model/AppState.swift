@@ -8,54 +8,33 @@
 import Foundation
 import Observation
 
+/// Global app state. There is no onboarding flow — a local identity (stable
+/// UUID + a friendly generated name used only for room naming) is created
+/// automatically on first launch and persisted.
 @Observable
 class AppState {
-    var currentUser: User?
-    var hasOnboarded: Bool {
-        get { UserDefaults.standard.bool(forKey: "hasOnboarded") }
-        set { UserDefaults.standard.set(newValue, forKey: "hasOnboarded") }
-    }
-    
+    var currentUser: User
+
     init() {
-        loadUser()
-    }
-    
-    func saveUser(name: String, role: Role) {
-        let id: UUID
-        if let storedID = UserDefaults.standard.string(forKey: "userID"),
-           let uuid = UUID(uuidString: storedID) {
-            id = uuid
+        if let idString = UserDefaults.standard.string(forKey: "userID"),
+           let id = UUID(uuidString: idString),
+           let name = UserDefaults.standard.string(forKey: "userName") {
+            currentUser = User(name: name, id: id)
         } else {
-            id = UUID()
+            let name = Self.generateName()
+            let id = UUID()
             UserDefaults.standard.set(id.uuidString, forKey: "userID")
+            UserDefaults.standard.set(name, forKey: "userName")
+            currentUser = User(name: name, id: id)
         }
-        
-        UserDefaults.standard.set(name, forKey: "userName")
-        UserDefaults.standard.set(role.rawValue, forKey: "userRole")
-        
-        currentUser = User(name: name, role: role, id: id)
-        hasOnboarded = true
     }
-    
-    func loadUser() {
-        guard hasOnboarded,
-              let name = UserDefaults.standard.string(forKey: "userName"),
-              let roleRaw = UserDefaults.standard.string(forKey: "userRole"),
-              let role = Role(rawValue: roleRaw),
-              let idString = UserDefaults.standard.string(forKey: "userID"),
-              let id = UUID(uuidString: idString)
-        else {
-            currentUser = nil
-            return
-        }
-        currentUser = User(name: name, role: role, id: id)
-    }
-    
-    func resetOnboarding() {
-        hasOnboarded = false
-        currentUser = nil
-        UserDefaults.standard.removeObject(forKey: "userName")
-        UserDefaults.standard.removeObject(forKey: "userRole")
-        UserDefaults.standard.removeObject(forKey: "userID")
+
+    /// A friendly Indonesian codename, used only for room naming / debugging.
+    private static func generateName() -> String {
+        let adjectives = ["Ceria", "Bijak", "Berani", "Tenang", "Ramah", "Lucu", "Cerdas"]
+        let animals = ["Rubah", "Lumba", "Rusa", "Panda", "Kucing", "Beruang", "Kelinci"]
+        let a = adjectives.randomElement() ?? "Ceria"
+        let n = animals.randomElement() ?? "Rubah"
+        return "\(a) \(n)"
     }
 }

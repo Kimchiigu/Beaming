@@ -7,24 +7,22 @@
 
 import Foundation
 
+/// A participant in a discussion. Every participant is a speaker — the phone
+/// blinks its flashlight when they speak. There is no deaf/hearing distinction.
 struct User: Identifiable, Codable, Hashable {
     var id: UUID = UUID()
     var name: String
-    var role: Role
     var joinedTime: Date?
-    var isSpeaking: Bool = false
-    var isFlashlight: Bool = false
-    
-    init(name: String, role: Role, id: UUID = UUID()) {
+
+    init(name: String, id: UUID = UUID()) {
         self.id = id
         self.name = name
-        self.role = role
     }
-    
+
     static func == (lhs: User, rhs: User) -> Bool {
         lhs.id == rhs.id
     }
-    
+
     func hash(into hasher: inout Hasher) {
         hasher.combine(id)
     }

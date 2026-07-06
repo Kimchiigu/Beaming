@@ -82,7 +82,8 @@ class FlashlightManager {
             try device.lockForConfiguration()
             device.torchMode = on ? .on : .off
             if on {
-                try device.setTorchModeOn(level: AVCaptureDevice.maxAvailableTorchLevel)
+                // Lowered from max so the blink is noticeable but not blinding.
+                try device.setTorchModeOn(level: 0.5)
             }
             device.unlockForConfiguration()
         } catch {

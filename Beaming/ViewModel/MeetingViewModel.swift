@@ -54,6 +54,9 @@ class MeetingViewModel {
     
     /// Timer for periodically broadcasting room state to prevent stuck participants
     private var syncTimer: Timer?
+
+    /// Guards leave/cleanup so it only runs once (back button + menu + endRoom).
+    private var hasLeft = false
     
     // MARK: - Init
     
@@ -84,9 +87,11 @@ class MeetingViewModel {
     
     // MARK: - Calibration
     
-    /// The Bonjour service name encoded for QR sharing.
+    /// The Bonjour service name encoded for QR sharing. Uses the HOST's name so
+    /// a guest sharing the QR still advertises the host's service. Format:
+    /// "hostName::::roomID" (matches NetworkManager.startAdvertising).
     var qrCodeString: String {
-        return "\(localUser.name)::::" + room.id.uuidString
+        "\(room.hostName)::::\(room.id.uuidString)"
     }
     
     /// Start the voice calibration process.
@@ -362,34 +367,41 @@ class MeetingViewModel {
         }
     }
     
-    /// Leave the room.
+    /// Leave the room. If the user is the only participant, the room is ended.
     func leaveRoom() {
+        guard !hasLeft else { return }
+        hasLeft = true
+
+        // Alone in the room → tear it down (and tell peers if we're the host).
+        if room.participantCount <= 1 {
+            if isHost { networkManager.broadcastMessage(.endRoom) }
+            cleanup()
+            shouldDismiss = true
+            return
+        }
+
         if isHost {
-            // Host handover: find oldest guest
+            // Host handover: promote the oldest guest.
             let guests = room.participants.filter { $0.id != localUser.id }
-            
             if let oldestGuest = guests.sorted(by: {
                 ($0.joinedTime ?? .distantFuture) < ($1.joinedTime ?? .distantFuture)
             }).first {
-                // Handover to oldest guest
                 room.hostID = oldestGuest.id
                 room.hostName = oldestGuest.name
                 room.name = oldestGuest.name + "'s Room"
                 room.participants.removeAll { $0.id == localUser.id }
-                
-                // Broadcast handover + updated state
+
                 networkManager.broadcastMessage(.hostHandover(newHostID: oldestGuest.id))
                 broadcastParticipantUpdate()
             } else {
-                // No guests left — end the room
                 endRoom()
                 return
             }
         } else {
-            // Guest leaving
+            // Guest leaving — host drops them and re-broadcasts the new count.
             networkManager.sendToHost(.leaveRoom(userID: localUser.id))
         }
-        
+
         cleanup()
         shouldDismiss = true
     }
@@ -433,6 +445,7 @@ class MeetingViewModel {
     }
     
     private func cleanup() {
+        hasLeft = true
         audioManager.stopListening()
         flashlightManager.setFlashlight(on: false)
         motionManager.stopAccelerometerUpdates()

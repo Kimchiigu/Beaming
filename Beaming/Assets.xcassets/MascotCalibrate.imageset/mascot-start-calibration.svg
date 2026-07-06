@@ -1,0 +1,35 @@
+<svg width="139" height="128" viewBox="0 0 139 128" fill="none" xmlns="http://www.w3.org/2000/svg">
+<g filter="url(#filter0_df_339_2038)">
+<path d="M3.17087 82.9364C2.77991 77.0721 4.89109 60.73 16.4635 42.2767C20.9186 34.8943 31.1692 21.0642 43.4395 11.6161C47.4327 8.45806 51.539 5.88138 55.5592 4.35368C61.5539 2.65952 76.5928 -0.0250601 88.7907 2.78984C93.4822 3.44144 105.758 8.26327 117.331 22.3378C123.325 30.9389 135.315 54.7092 135.315 80.9816C135.054 90.6253 129.294 111.32 108.339 116.95C93.3519 120.599 56.5757 125.551 29.3649 116.168C20.8942 112.91 3.79626 101.702 3.17087 82.9364Z" fill="url(#paint0_linear_339_2038)"/>
+</g>
+<ellipse opacity="0.5" cx="106.732" cy="69.262" rx="11.3378" ry="5.92658" fill="#FF7889"/>
+<ellipse opacity="0.5" cx="42.6152" cy="69.262" rx="11.3378" ry="5.92658" fill="#FF7889"/>
+<circle cx="100.868" cy="27.3674" r="3.12767" fill="white"/>
+<circle cx="105.559" cy="32.059" r="1.56384" fill="white"/>
+<circle cx="96.1765" cy="23.4577" r="0.781918" fill="white"/>
+<ellipse cx="91.4851" cy="55.9074" rx="5.47343" ry="5.86439" fill="black"/>
+<ellipse cx="72.7182" cy="70.3726" rx="6.25534" ry="10.9469" fill="black"/>
+<ellipse cx="74.2823" cy="70.3732" rx="4.69151" ry="8.75748" fill="#BA1A1A"/>
+<ellipse cx="72.7182" cy="70.3726" rx="6.25534" ry="10.9469" fill="black"/>
+<ellipse cx="74.2823" cy="70.3732" rx="4.69151" ry="8.75748" fill="#BA1A1A"/>
+<ellipse cx="56.2986" cy="55.9074" rx="5.47343" ry="5.86439" fill="black"/>
+<circle cx="88.7481" cy="55.9073" r="1.17288" fill="#D9D9D9"/>
+<circle cx="53.5616" cy="55.9073" r="1.17288" fill="#D9D9D9"/>
+<defs>
+<filter id="filter0_df_339_2038" x="0.00025773" y="0.000128865" width="138.442" height="127.819" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+<feFlood flood-opacity="0" result="BackgroundImageFix"/>
+<feColorMatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0" result="hardAlpha"/>
+<feOffset dy="3.12767"/>
+<feGaussianBlur stdDeviation="1.56384"/>
+<feComposite in2="hardAlpha" operator="out"/>
+<feColorMatrix type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.1 0"/>
+<feBlend mode="normal" in2="BackgroundImageFix" result="effect1_dropShadow_339_2038"/>
+<feBlend mode="normal" in="SourceGraphic" in2="effect1_dropShadow_339_2038" result="shape"/>
+<feGaussianBlur stdDeviation="0.781918" result="effect2_foregroundBlur_339_2038"/>
+</filter>
+<linearGradient id="paint0_linear_339_2038" x1="69.2214" y1="1.56396" x2="69.2214" y2="121.564" gradientUnits="userSpaceOnUse">
+<stop stop-color="#FAF7B8"/>
+<stop offset="1" stop-color="#83DFEF"/>
+</linearGradient>
+</defs>
+</svg>

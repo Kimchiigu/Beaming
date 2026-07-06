@@ -10,5 +10,7 @@
 	<string>Beaming menggunakan kamera untuk memindai kode QR agar kamu bisa bergabung ke diskusi.</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>Beaming menggunakan mikrofon untuk mendeteksi suaramu dan mengaktifkan lampu sebagai penanda pembicara.</string>
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>Beaming menghubungkan perangkat di sekitar melalui jaringan lokal untuk menjalankan diskusi.</string>
 </dict>
 </plist>
