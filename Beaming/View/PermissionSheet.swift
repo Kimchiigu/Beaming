@@ -23,11 +23,7 @@ struct PermissionSheet: View {
                     .font(.system(size: 17, weight: .semibold))
                     .tracking(-0.43)
                 HStack {
-                    Button(action: onClose) {
-                        Image(systemName: "xmark.circle.fill")
-                            .font(.title3)
-                            .foregroundStyle(.secondary)
-                    }
+                    GlassIconButton(systemName: "xmark", action: onClose)
                     Spacer()
                 }
             }

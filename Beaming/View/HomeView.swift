@@ -87,8 +87,8 @@ struct HomeView: View {
                     HomeActionCard(
                         symbol: "plus",
                         title: "Mulai diskusi",
-                        accent: BeamingPalette.blue,
-                        chipBg: BeamingPalette.blue.opacity(0.1)
+                        accent: BeamingPalette.green,
+                        chipBg: BeamingPalette.secondary
                     ) {
                         viewModel.didTapCreate()
                     }
@@ -97,7 +97,7 @@ struct HomeView: View {
                         symbol: "qrcode.viewfinder",
                         title: "Scan QR untuk bergabung",
                         accent: BeamingPalette.green,
-                        chipBg: BeamingPalette.greenTint.opacity(0.35)
+                        chipBg: BeamingPalette.secondary
                     ) {
                         viewModel.didTapJoin()
                     }

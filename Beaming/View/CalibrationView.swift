@@ -79,22 +79,14 @@ struct CalibrationView: View {
                 .font(.system(size: 17, weight: .semibold))
                 .tracking(-0.43)
             HStack {
-                Button {
+                GlassIconButton(systemName: "chevron.backward") {
                     viewModel.leaveRoom()
-                } label: {
-                    Image(systemName: "chevron.backward")
-                        .font(.system(size: 17, weight: .semibold))
-                        .foregroundStyle(.black)
-                        .frame(width: 40, height: 40)
-                        .background(.ultraThinMaterial)
-                        .clipShape(Circle())
                 }
                 Spacer()
             }
         }
-        .padding(.horizontal, 12)
-        .padding(.top, 8)
-        .frame(height: 52)
+        .padding(.horizontal, 8)
+        .frame(height: 44)
     }
 
     // MARK: - Intro

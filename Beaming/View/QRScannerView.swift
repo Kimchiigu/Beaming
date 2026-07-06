@@ -40,11 +40,7 @@ struct QRScannerView: View {
                         .font(.system(size: 17, weight: .semibold))
                         .foregroundStyle(.white)
                     HStack {
-                        Button(action: onClose) {
-                            Image(systemName: "xmark.circle.fill")
-                                .font(.title)
-                                .foregroundStyle(.white)
-                        }
+                        GlassIconButton(systemName: "xmark", tint: .white, size: 40, action: onClose)
                         Spacer()
                     }
                 }

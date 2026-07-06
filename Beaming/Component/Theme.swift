@@ -21,7 +21,7 @@ extension Color {
 
 /// Brand palette extracted from the Figma hi-fi.
 enum BeamingPalette {
-    static let green = Color(hex: 0x6BB99C)   // primary brand
+    static let green = Color(hex: 0x2C755D)   // primary brand
     static let blue = Color(hex: 0x0093EC)    // create accent
     static let yellow = Color(hex: 0xFFCC00)  // gradient end
     static let pink = Color(hex: 0xFF7889)    // secondary
@@ -31,19 +31,22 @@ enum BeamingPalette {
     static let netChip = Color(hex: 0xC3E7FF)
     static let greenTint = Color(hex: 0x94F2CF)
 
-    /// The blue → green → yellow gradient used on the "Beaming!" wordmark.
+    /// The light-green gradient used on the "Beaming!" wordmark (#6BBF9B → #A3D5A0).
     static var wordmark: LinearGradient {
         LinearGradient(
-            colors: [blue, green, yellow],
-            startPoint: UnitPoint(x: 0.10, y: 0.15),
-            endPoint: UnitPoint(x: 0.90, y: 0.85)
+            colors: [Color(hex: 0x6BBF9B), Color(hex: 0xA3D5A0)],
+            startPoint: .top,
+            endPoint: .bottom
         )
     }
 
-    /// Decorative background blob gradient (green → blue).
+    /// Secondary tint — soft light-green fill (#94F2CF @ 20%).
+    static var secondary: Color { greenTint.opacity(0.2) }
+
+    /// Decorative background blob gradient (light-green → blue), kept soft.
     static var blob: LinearGradient {
         LinearGradient(
-            colors: [green.opacity(0.5), blue.opacity(0.35)],
+            colors: [greenTint.opacity(0.7), blue.opacity(0.3)],
             startPoint: .topLeading,
             endPoint: .bottomTrailing
         )
@@ -100,5 +103,24 @@ struct PrimaryButtonStyle: ButtonStyle {
             .shadow(color: .black.opacity(0.12), radius: configuration.isPressed ? 4 : 8, y: 4)
             .scaleEffect(configuration.isPressed ? 0.98 : 1)
             .animation(.easeOut(duration: 0.15), value: configuration.isPressed)
+    }
+}
+
+// MARK: - Liquid Glass icon button (iOS 26+)
+
+struct GlassIconButton: View {
+    let systemName: String
+    var tint: Color = .primary
+    var size: CGFloat = 36
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Image(systemName: systemName)
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundStyle(tint)
+                .frame(width: size, height: size)
+                .glassEffect(in: Circle())
+        }
     }
 }
