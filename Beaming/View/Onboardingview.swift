@@ -7,60 +7,90 @@
 
 import SwiftUI
 
-/// The 3-step onboarding flow (Welcome → Privacy → Profile form).
+/// The 3-step onboarding flow (Welcome → Phone position → Profile form).
 /// Shown only on first launch — see `AppState.hasCompletedOnboarding`.
 struct OnboardingView: View {
     @Environment(AppState.self) private var appState
     @State private var viewModel = OnboardingViewModel()
 
+    private let brandGreen = Color(hex: "1F6E4C")
+
     var body: some View {
-        VStack(spacing: 0) {
-            TabView(selection: $viewModel.currentPage) {
-                ForEach(OnboardingPage.all) { page in
-                    OnboardingSlideView(page: page)
-                        .tag(page.id)
-                }
+        TabView(selection: $viewModel.currentPage) {
 
-                OnboardingFormView(viewModel: viewModel)
-                    .tag(2)
+            ForEach(OnboardingPage.all) { page in
+
+                OnboardingSlideView(page: page)
+
+                    .tag(page.id)
+
             }
-            .tabViewStyle(.page(indexDisplayMode: .never))
-            .animation(.easeInOut, value: viewModel.currentPage)
 
-            OnboardingPageIndicator(
-                numberOfPages: viewModel.totalPages,
-                currentPage: viewModel.currentPage,
-                activeColor: currentAccentColor
-            )
-            .padding(.bottom, 12)
+            OnboardingFormView(viewModel: viewModel)
 
-            if viewModel.isLastPage {
+                .tag(2)
+
+        }
+
+        .tabViewStyle(.page(indexDisplayMode: .never))
+
+        .animation(.easeInOut, value: viewModel.currentPage)
+
+        .ignoresSafeArea()
+
+        .overlay(alignment: .bottom) {
+
+            VStack(spacing: 16) {
+
+                OnboardingPageIndicator(
+
+                    numberOfPages: viewModel.totalPages,
+
+                    currentPage: viewModel.currentPage,
+
+                    activeColor: brandGreen
+
+                )
+
                 Button {
-                    viewModel.completeOnboarding(appState: appState)
-                } label: {
-                    Text("Continue")
-                        .font(.headline)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 14)
-                }
-                .buttonStyle(.glassProminent)
-                .disabled(!viewModel.isFormValid)
-                .opacity(viewModel.isFormValid ? 1 : 0.5)
-                .padding(.horizontal, 24)
-                .padding(.bottom, 16)
-                .animation(.easeInOut(duration: 0.15), value: viewModel.isFormValid)
-            }
-        }
-        .background(Color(.systemBackground))
-    }
 
-    /// Drives the active dot color: blue on the welcome slide, green on the
-    /// privacy slide, purple on the profile form — matches the design.
-    private var currentAccentColor: Color {
-        if viewModel.currentPage < OnboardingPage.all.count {
-            return OnboardingPage.all[viewModel.currentPage].accentColor
+                    if viewModel.isLastPage {
+
+                        viewModel.completeOnboarding(appState: appState)
+
+                    } else {
+
+                        withAnimation {
+
+                            viewModel.goToNextPage()
+
+                        }
+
+                    }
+
+                } label: {
+
+                    Text(viewModel.isLastPage ? "Continue" : "Selanjutnya")
+
+                        .font(.headline.weight(.semibold))
+
+                        .foregroundStyle(.white)
+
+                        .frame(maxWidth: .infinity)
+
+                        .padding(.vertical, 16)
+
+                }
+
+                .background(brandGreen, in: Capsule())
+
+            }
+
+            .padding(.horizontal, 24)
+
+            .padding(.bottom, 24)
+
         }
-        return .purple
     }
 }
 

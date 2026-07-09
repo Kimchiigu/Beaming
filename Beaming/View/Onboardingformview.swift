@@ -71,6 +71,7 @@ struct OnboardingFormView: View {
                 .padding(.top, 16)
             }
         }
+        .background(Color(.systemBackground).ignoresSafeArea())
     }
 }
 

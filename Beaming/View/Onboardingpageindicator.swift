@@ -7,9 +7,8 @@
 
 import SwiftUI
 
-/// Reusable dot page indicator. The active dot is tinted with the current
-/// page's accent color; inactive dots stay neutral gray — matches the
-/// design where the active dot color changes per onboarding step.
+/// Reusable dot page indicator. The active dot is filled with the brand
+/// green; inactive dots use a soft mint tint to match the design.
 struct OnboardingPageIndicator: View {
     let numberOfPages: Int
     let currentPage: Int
@@ -19,7 +18,7 @@ struct OnboardingPageIndicator: View {
         HStack(spacing: 8) {
             ForEach(0..<numberOfPages, id: \.self) { index in
                 Capsule()
-                    .fill(index == currentPage ? activeColor : Color(.systemGray4))
+                    .fill(index == currentPage ? activeColor : Color(hex: "CFEFD9"))
                     .frame(width: index == currentPage ? 20 : 7, height: 7)
             }
         }
@@ -28,5 +27,5 @@ struct OnboardingPageIndicator: View {
 }
 
 #Preview {
-    OnboardingPageIndicator(numberOfPages: 3, currentPage: 1, activeColor: .green)
+    OnboardingPageIndicator(numberOfPages: 3, currentPage: 0, activeColor: Color(hex: "1F6E4C"))
 }

@@ -36,6 +36,11 @@ final class OnboardingViewModel {
         currentPage -= 1
     }
 
+    func goToNextPage() {
+        guard currentPage < totalPages - 1 else { return }
+        currentPage += 1
+    }
+
     func select(role: OnboardingRole) {
         selectedRole = role
         isRolePickerExpanded = false
