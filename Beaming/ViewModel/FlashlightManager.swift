@@ -82,8 +82,8 @@ class FlashlightManager {
             try device.lockForConfiguration()
             device.torchMode = on ? .on : .off
             if on {
-                // Lowered from max so the blink is noticeable but not blinding.
-                try device.setTorchModeOn(level: 0.5)
+                // Low intensity so the blink is noticeable but not blinding.
+                try device.setTorchModeOn(level: 0.1)
             }
             device.unlockForConfiguration()
         } catch {

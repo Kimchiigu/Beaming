@@ -32,17 +32,15 @@ struct MeetingView: View {
         }
         .navigationTitle("Mode Diskusi")
         .navigationBarTitleDisplayMode(.inline)
+        .navigationBarBackButtonHidden(true)
         // Hide the nav bar while calibrating or face-down so overlays cover fully.
         .toolbar((viewModel.isFaceDown || viewModel.showCalibration) ? .hidden : .visible,
                  for: .navigationBar)
         .toolbar {
-            // "Keluar Diskusi" — top-right exit door, red.
-            ToolbarItem(placement: .topBarTrailing) {
-                Button {
+            // Back = leave meeting (exit door, glass — matches other toolbars)
+            ToolbarItem(placement: .topBarLeading) {
+                GlassIconButton(systemName: "rectangle.portrait.and.arrow.right", tint: .red) {
                     viewModel.leaveRoom()
-                } label: {
-                    Image(systemName: "rectangle.portrait.and.arrow.right")
-                        .foregroundStyle(.red)
                 }
             }
         }
@@ -54,6 +52,10 @@ struct MeetingView: View {
                 didAutoShowQR = true
                 showHostQR = true
             }
+        }
+        // Close the QR sheet if the phone is placed face-down.
+        .onChange(of: viewModel.isFaceDown) { _, faceDown in
+            if faceDown { showHostQR = false }
         }
         .sheet(isPresented: $showHostQR) {
             QRShareSheet(code: viewModel.qrCodeString) {

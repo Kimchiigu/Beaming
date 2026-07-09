@@ -42,15 +42,15 @@ struct CalibrationView: View {
                     .padding(.top, 24)
                     .accessibilityHidden(true)
 
-                HStack(spacing: 9) {
-                    Image(systemName: "lines.measurement.horizontal")
-                        .font(.system(size: 22))
-                    Text("Kalibrasi suara")
-                        .font(.system(size: 22, weight: .bold))
-                        .tracking(-0.26)
-                }
-                .foregroundStyle(.black)
-                .padding(.top, 8)
+//                HStack(spacing: 9) {
+//                    Image(systemName: "lines.measurement.horizontal")
+//                        .font(.system(size: 22))
+//                    Text("Kalibrasi suara")
+//                        .font(.system(size: 22, weight: .bold))
+//                        .tracking(-0.26)
+//                }
+//                .foregroundStyle(.black)
+//                .padding(.top, 8)
 
                 Spacer(minLength: 12)
 
@@ -75,7 +75,7 @@ struct CalibrationView: View {
 
     private var calibrationToolbar: some View {
         ZStack {
-            Text("Kalibrasi")
+            Text("Kalibrasi Suara")
                 .font(.system(size: 17, weight: .semibold))
                 .tracking(-0.43)
             HStack {
@@ -94,7 +94,7 @@ struct CalibrationView: View {
     private var introState: some View {
         VStack(spacing: 20) {
             VStack(spacing: 18) {
-                Text("Baca kalimat di bawah ini dengan suara normal kamu")
+                Text("Baca kalimat di bawah ini dengan suara normal kamu dan posisikan iPhone di meja")
                     .font(.system(size: 16, weight: .semibold))
                     .tracking(-0.31)
                     .multilineTextAlignment(.center)
