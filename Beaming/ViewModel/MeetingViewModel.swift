@@ -34,6 +34,14 @@ class MeetingViewModel {
     
     /// Whether calibration has been completed.
     var isCalibrationDone: Bool = false
+
+    // MARK: - Live captions (transcription feed, merged from all speakers)
+
+    /// Committed caption bubbles (all speakers). Auto-pruned to the history window.
+    var captions: [CaptionMessage] = []
+
+    /// Currently-streaming partial per speaker (speakerID → live bubble).
+    var liveBySpeaker: [UUID: CaptionMessage] = [:]
     
     // MARK: - Managers
     
@@ -57,6 +65,15 @@ class MeetingViewModel {
 
     /// Guards leave/cleanup so it only runs once (back button + menu + endRoom).
     private var hasLeft = false
+
+    /// Caption history window + broadcast throttle.
+    private var captionPruneTimer: Timer?
+    private let captionHistoryWindow: TimeInterval = 300   // keep last 5 minutes
+    private var lastCaptionBroadcast: Date = .distantPast
+    private let captionBroadcastMinInterval: TimeInterval = 0.2
+    /// Hard cap on the rendered list so a long session can't grow unbounded
+    /// (keeps per-partial render cost bounded — see chatScroll in MeetingView).
+    private let maxCaptions = 200
     
     // MARK: - Init
     
@@ -83,6 +100,7 @@ class MeetingViewModel {
         // All users: show calibration first, then start audio after done
         showCalibration = true
         startFaceDownDetection()
+        startCaptionPruneTimer()
     }
     
     // MARK: - Calibration
@@ -92,6 +110,85 @@ class MeetingViewModel {
     /// "hostName::::roomID" (matches NetworkManager.startAdvertising).
     var qrCodeString: String {
         "\(room.hostName)::::\(room.id.uuidString)"
+    }
+
+    // MARK: - Live Captions
+
+    /// Local transcription produced new text (called from VoiceTranscribeViewModel).
+    /// Applies it to the local feed AND broadcasts it to the room.
+    func handleLocalCaption(text: String, isFinal: Bool) {
+        let speakerID = localUser.id
+        let speakerName = localUser.name
+        applyCaption(speakerID: speakerID, speakerName: speakerName, text: text, isFinal: isFinal)
+        broadcastCaption(speakerID: speakerID, speakerName: speakerName, text: text, isFinal: isFinal)
+    }
+
+    /// A caption arrived from a peer over the network.
+    private func handleRemoteCaption(speakerID: UUID, speakerName: String, text: String, isFinal: Bool) {
+        // Ignore our own captions echoed back.
+        guard speakerID != localUser.id else { return }
+        applyCaption(speakerID: speakerID, speakerName: speakerName, text: text, isFinal: isFinal)
+        // Star topology: the host relays guest captions to the OTHER guests so
+        // everyone sees them (guests only have a direct line to the host).
+        if isHost {
+            networkManager.broadcastMessage(.caption(speakerID: speakerID, speakerName: speakerName, text: text, isFinal: isFinal))
+        }
+    }
+
+    /// Place a caption into the merged feed (committed sentence or live partial).
+    private func applyCaption(speakerID: UUID, speakerName: String, text: String, isFinal: Bool) {
+        if isFinal {
+            if !text.isEmpty {
+                captions.append(CaptionMessage(speakerID: speakerID, speakerName: speakerName, text: text, date: Date()))
+            }
+            liveBySpeaker[speakerID] = nil
+        } else if text.isEmpty {
+            liveBySpeaker[speakerID] = nil
+        } else if liveBySpeaker[speakerID] != nil {
+            liveBySpeaker[speakerID]?.text = text
+        } else {
+            liveBySpeaker[speakerID] = CaptionMessage(speakerID: speakerID, speakerName: speakerName, text: text, date: Date())
+        }
+        enforceCaptionCap()
+    }
+
+    /// Broadcast a caption to the room (host → all guests; guest → host, which relays).
+    private func broadcastCaption(speakerID: UUID, speakerName: String, text: String, isFinal: Bool) {
+        // Throttle partials (they fire several times/sec); finals always go through.
+        if !isFinal {
+            let now = Date()
+            guard now.timeIntervalSince(lastCaptionBroadcast) >= captionBroadcastMinInterval else { return }
+            lastCaptionBroadcast = now
+        }
+        let msg = NetworkMessage.caption(speakerID: speakerID, speakerName: speakerName, text: text, isFinal: isFinal)
+        if isHost {
+            networkManager.broadcastMessage(msg)
+        } else {
+            networkManager.sendToHost(msg)
+        }
+    }
+
+    private func startCaptionPruneTimer() {
+        captionPruneTimer?.invalidate()
+        captionPruneTimer = Timer.scheduledTimer(withTimeInterval: 15, repeats: true) { [weak self] _ in
+            self?.pruneOldCaptions()
+        }
+    }
+
+    /// Drop caption bubbles older than the history window (runs on the prune timer).
+    private func pruneOldCaptions() {
+        let cutoff = Date().addingTimeInterval(-captionHistoryWindow)
+        captions.removeAll { $0.date < cutoff }
+        let stale = liveBySpeaker.filter { $0.value.date < cutoff }
+        for key in stale.keys { liveBySpeaker[key] = nil }
+        enforceCaptionCap()
+    }
+
+    /// Cheap cap: only trims when over the limit. Called per partial, so it must be
+    /// near O(1) — the time-based prune runs separately on the 15s timer.
+    private func enforceCaptionCap() {
+        guard captions.count > maxCaptions else { return }
+        captions.removeFirst(captions.count - maxCaptions)
     }
     
     /// Start the voice calibration process.
@@ -213,6 +310,9 @@ class MeetingViewModel {
             
         case .roomInfo(let updatedRoom):
             self.room = updatedRoom
+
+        case .caption(let speakerID, let speakerName, let text, let isFinal):
+            handleRemoteCaption(speakerID: speakerID, speakerName: speakerName, text: text, isFinal: isFinal)
         }
     }
     
@@ -453,6 +553,8 @@ class MeetingViewModel {
         claimResolutionTimer = nil
         syncTimer?.invalidate()
         syncTimer = nil
+        captionPruneTimer?.invalidate()
+        captionPruneTimer = nil
         pendingClaims.removeAll()
         if isHost {
             networkManager.stopAdvertising()

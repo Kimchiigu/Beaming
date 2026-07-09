@@ -15,6 +15,8 @@ struct MeetingView: View {
     @State var viewModel: MeetingViewModel
     @State private var showHostQR = false
     @State private var didAutoShowQR = false
+    @State private var transcriber = VoiceTranscribeViewModel()
+    @State private var lastScrollAt: Date = .distantPast
 
     var body: some View {
         ZStack {
@@ -48,6 +50,10 @@ struct MeetingView: View {
         .animation(.easeInOut(duration: 0.25), value: viewModel.showCalibration)
         // Host: auto-present the QR (half sheet) the moment calibration ends.
         .onChange(of: viewModel.showCalibration) { _, stillCalibrating in
+            if !stillCalibrating {
+                // Always-on captions start the moment calibration finishes.
+                transcriber.startTranscribing()
+            }
             if !stillCalibrating && viewModel.isHost && !didAutoShowQR {
                 didAutoShowQR = true
                 showHostQR = true
@@ -62,7 +68,18 @@ struct MeetingView: View {
                 showHostQR = false
             }
         }
+        .onAppear {
+            // Always-on captions: route the local engine's output into the shared
+            // feed (which also broadcasts to the room) and start once calibrated.
+            transcriber.onCaptionUpdate = { [weak viewModel] text, isFinal in
+                viewModel?.handleLocalCaption(text: text, isFinal: isFinal)
+            }
+            if !viewModel.showCalibration {
+                transcriber.startTranscribing()
+            }
+        }
         .onDisappear {
+            transcriber.stopTranscribing()
             viewModel.leaveRoom()
         }
         .onChange(of: viewModel.shouldDismiss) { _, shouldDismiss in
@@ -151,7 +168,9 @@ struct MeetingView: View {
                     .padding(.horizontal, 44)
                 }
 
-                Spacer(minLength: 0)
+                Spacer(minLength: 16)
+
+                transcriptionCard
 
                 // Standalone QR pill button
                 Button {
@@ -167,6 +186,111 @@ struct MeetingView: View {
                 .padding(.bottom, 36)
             }
         }
+    }
+
+    // MARK: - Live transcription
+
+    /// Caption card: always-on chat-style transcript merged from all speakers.
+    private var transcriptionCard: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 6) {
+                Image(systemName: transcriber.isTranscribing ? "waveform" : "captions.bubble")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(BeamingPalette.green)
+                Text("Transkripsi Langsung")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(BeamingPalette.green)
+                if transcriber.isTranscribing {
+                    Text("● langsung")
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(BeamingPalette.green)
+                }
+                Spacer()
+            }
+
+            if let err = transcriber.errorMessage {
+                Text(err)
+                    .font(.system(size: 12))
+                    .foregroundStyle(Color(hex: 0xE0533D))
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            } else if viewModel.captions.isEmpty && viewModel.liveBySpeaker.isEmpty {
+                Text(transcriber.isTranscribing ? "Mendengarkan…" : "Memulai transkripsi…")
+                    .font(.system(size: 15))
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .frame(minHeight: 44)
+            } else {
+                chatScroll
+            }
+        }
+        .padding(16)
+        .beamingCard()
+        .padding(.horizontal, 24)
+    }
+
+    /// Scrollable, auto-following chat of caption bubbles from everyone in the room.
+    /// captions is appended in chronological order, so we render it directly (no
+    /// per-render sort) — sorting on every streaming partial was the main-thread
+    /// bottleneck that lagged scrolling and starved transcription.
+    private var chatScroll: some View {
+        ScrollViewReader { proxy in
+            ScrollView {
+                LazyVStack(alignment: .leading, spacing: 10) {
+                    ForEach(viewModel.captions) { msg in
+                        captionBubble(msg, isLive: false)
+                            .id(msg.id.uuidString)
+                    }
+                    ForEach(Array(viewModel.liveBySpeaker.values), id: \.speakerID) { live in
+                        captionBubble(live, isLive: true)
+                            .id("live-\(live.speakerID.uuidString)")
+                    }
+                    Color.clear.frame(height: 1).id("bottom")
+                }
+                .padding(.vertical, 2)
+            }
+            .frame(height: 190)
+            .onChange(of: viewModel.captions.count) { _, _ in follow(proxy) }
+            .onChange(of: liveSignature) { _, _ in follow(proxy) }
+            .onAppear { follow(proxy) }
+        }
+    }
+
+    /// Throttled, non-animated auto-scroll. A streaming partial fires several times
+    /// per second; animating+laying out the whole list on each one was too costly.
+    private func follow(_ proxy: ScrollViewProxy) {
+        let now = Date()
+        guard now.timeIntervalSince(lastScrollAt) >= 0.2 else { return }
+        lastScrollAt = now
+        proxy.scrollTo("bottom", anchor: .bottom)
+    }
+
+    /// Fingerprint of all live bubbles — changes as any speaker's partial streams in.
+    private var liveSignature: String {
+        viewModel.liveBySpeaker.values
+            .sorted(by: { $0.speakerID.uuidString < $1.speakerID.uuidString })
+            .map(\.text)
+            .joined(separator: "|")
+    }
+
+    /// One chat bubble. This device's own captions are right-aligned green; everyone
+    /// else is left-aligned grey.
+    private func captionBubble(_ msg: CaptionMessage, isLive: Bool) -> some View {
+        let isOwn = msg.speakerID == viewModel.localUser.id
+        return VStack(alignment: isOwn ? .trailing : .leading, spacing: 3) {
+            Text(msg.speakerName)
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(BeamingPalette.green)
+            Text(isLive ? msg.text + "…" : msg.text)
+                .font(.system(size: 15))
+                .foregroundStyle(isOwn ? .white : .black)
+                .multilineTextAlignment(isOwn ? .trailing : .leading)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
+                .background(isOwn ? BeamingPalette.green : Color(hex: 0xF0F1F2))
+                .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+        }
+        .frame(maxWidth: 260, alignment: isOwn ? .trailing : .leading)
+        .frame(maxWidth: .infinity, alignment: isOwn ? .trailing : .leading)
     }
 }
 

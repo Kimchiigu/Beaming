@@ -26,6 +26,11 @@ enum NetworkMessage: Codable {
     case hostHandover(newHostID: UUID)
     case endRoom
     case leaveRoom(userID: UUID)
+
+    // Live caption from a speaker — broadcast so everyone sees who says what.
+    // isFinal=false → growing partial (replace that speaker's live bubble);
+    // isFinal=true  → a finalized sentence (commit a bubble, clear the live one).
+    case caption(speakerID: UUID, speakerName: String, text: String, isFinal: Bool)
     
     // Encoding helpers
     func encode() -> Data? {
