@@ -5,9 +5,16 @@
 //  Created by Christopher Hardy Gunawan on 09/07/26.
 //
 //  Live speech-to-text engine for the in-meeting captions. Wraps SFSpeechRecognizer
-//  + its own AVAudioEngine and EMITS recognized text via `onCaptionUpdate`. The
-//  caller (MeetingViewModel) owns the displayed feed and the network broadcast.
-//  Restarts silently before SFSpeech's ~1-minute per-task cap.
+//  + its own AVAudioEngine and EMITS one cumulative "turn" string via
+//  `onCaptionUpdate`. The caller (MeetingViewModel) turns each turn into a single
+//  chat bubble and starts a new bubble when the speaker changes.
+//
+//  Semantics of `onCaptionUpdate(text, isFinal)`:
+//  - isFinal == false → the FULL text of the current speaking turn so far (grows as
+//    the user talks; accumulates across SFSpeech's ~60s task restarts so earlier
+//    words are never lost mid-turn).
+//  - isFinal == true  → the turn just ended (a pause in speech); `text` is the full
+//    turn text. After this, internal turn state resets so the next utterance is fresh.
 //
 
 import Foundation
@@ -25,11 +32,6 @@ struct CaptionMessage: Identifiable {
 }
 
 /// Live speech-to-text engine.
-///
-/// Owns its own `AVAudioEngine` + `SFSpeechRecognizer` and emits recognized text
-/// through `onCaptionUpdate(text, isFinal)`:
-/// - `isFinal == true`  → a finalized sentence (commit a bubble).
-/// - `isFinal == false` → the growing partial since the last sentence (live bubble).
 ///
 /// ⚠️ Coexistence note: `AudioManager` ALSO installs a mic input tap (for RMS
 /// detection) for the whole meeting. This VM uses a *separate* engine/node, so the
@@ -49,7 +51,7 @@ final class VoiceTranscribeViewModel {
     /// Last error, surfaced in the UI. nil when healthy.
     private(set) var errorMessage: String?
 
-    /// Fired on the main actor with recognized text. See class docs for semantics.
+    /// Fired on the main actor with the current turn text. See class docs.
     var onCaptionUpdate: ((_ text: String, _ isFinal: Bool) -> Void)?
 
     // MARK: - Speech plumbing
@@ -64,21 +66,25 @@ final class VoiceTranscribeViewModel {
     private let restartInterval: TimeInterval = 50
     private var restartTimer: Timer?
 
-    /// How many characters of the *current* recognition task's transcript have
-    /// already been emitted as finalized sentences.
-    private var committedChars: Int = 0
-
-    /// The currently-open partial tail (emitted as the live bubble; flushed on end).
-    private var currentTail: String = ""
-
-    /// Pause detection: when no new partial arrives for this long, the current
-    /// bubble is committed so the next utterance starts a fresh bubble.
+    /// Pause detection: when no new partial arrives for this long, the current turn
+    /// is committed (so the next utterance starts a fresh bubble).
     private var pauseTimer: Timer?
     private let pauseInterval: TimeInterval = 1.2
 
-    /// Character count of the last seen cumulative transcript. Used to advance the
-    /// cursor correctly when committing on a pause (without resetting the task).
-    private var lastFullCount: Int = 0
+    // MARK: - Turn state (one bubble per speaking turn)
+
+    /// Full text of the current speaking turn so far (what's emitted to the UI).
+    private var turnText: String = ""
+
+    /// Text finalized from earlier recognition segments within this turn
+    /// (accumulated across SFSpeech's ~60s task restarts so words aren't lost).
+    private var committedFromTask: String = ""
+
+    /// The current recognition task's cumulative transcript (resets on restart).
+    private var currentSegmentText: String = ""
+
+    /// Last value emitted, to skip no-op duplicates (identical repeated partials).
+    private var lastEmittedTurnText: String = ""
 
     /// Recognition locale. Defaults to Indonesian; falls back if unavailable.
     init(locale: Locale = Locale(identifier: "id-ID")) {
@@ -105,13 +111,11 @@ final class VoiceTranscribeViewModel {
         }
 
         errorMessage = nil
-        committedChars = 0
-        currentTail = ""
-        lastFullCount = 0
+        resetTurnState()
         Task { await startAfterPermissions() }
     }
 
-    /// Stop capturing + recognizing. Flushes any in-flight partial as a final.
+    /// Stop capturing + recognizing. Commits the in-flight turn.
     func stopTranscribing() {
         teardown()
     }
@@ -188,109 +192,75 @@ final class VoiceTranscribeViewModel {
     // MARK: - Result handling
 
     private func handle(result: SFSpeechRecognitionResult?, error: Error?) {
-        if let result {
+        let taskEnded = (error != nil) || (result?.isFinal == true)
+
+        if let result, !taskEnded {
             applyPartial(result.bestTranscription.formattedString)
         }
 
-        // SFSpeech ends each task near 60s (delivered as an error or isFinal).
-        // Flush the open partial, then seamlessly start a fresh task.
-        let taskEnded = (error != nil) || (result?.isFinal == true)
         if taskEnded {
-            commitTail(resetCursor: true)
+            // SFSpeech ended this recognition task (~60s limit). Fold the finished
+            // segment into the turn so its text survives, then start a fresh task —
+            // the turn continues (no new bubble yet).
+            accumulateSegment()
             if isTranscribing {
                 restartTask()
             }
         }
     }
 
-    /// Split the cumulative transcript into newly-completed sentences + the open
-    /// tail, and emit each via `onCaptionUpdate`. Also arms the pause timer so a
-    /// pause in speech commits the current bubble (and starts a fresh one).
+    /// A new partial arrived: grow the current turn's text and emit it.
     private func applyPartial(_ full: String) {
-        // SFSpeech slid its context window (dropped earlier text). Realign without
-        // re-emitting already-committed sentences; show what remains as the live bubble.
-        if full.count < committedChars {
-            committedChars = 0
-            let tail = full.trimmingCharacters(in: .whitespacesAndNewlines)
-            currentTail = tail
-            lastFullCount = full.count
-            onCaptionUpdate?(tail, false)
-            resetPauseTimer()
-            return
-        }
+        currentSegmentText = full
+        turnText = committedFromTask.isEmpty ? full : (committedFromTask + " " + full)
 
-        let (sentences, liveTail) = extractNewSentences(from: full)
-        for sentence in sentences {
-            onCaptionUpdate?(sentence, true)
-        }
-
-        let trimmedTail = liveTail.trimmingCharacters(in: .whitespacesAndNewlines)
-        lastFullCount = full.count
-
-        // Only reset the pause timer when the live tail actually changed — identical
-        // repeated partials mean the user paused, so we let the timer fire + commit.
-        if trimmedTail != currentTail {
-            currentTail = trimmedTail
-            onCaptionUpdate?(trimmedTail, false)
+        // Only emit + reset the pause timer when the turn text actually changed —
+        // identical repeated partials mean the user paused, so let the timer fire.
+        if turnText != lastEmittedTurnText {
+            lastEmittedTurnText = turnText
+            onCaptionUpdate?(turnText, false)
             resetPauseTimer()
         }
     }
 
-    /// Split `full` (the whole current-task transcript) beyond what's already
-    /// committed into finalized sentences + the still-open tail. Advances
-    /// `committedChars` by the characters consumed.
-    private func extractNewSentences(from full: String) -> (newSentences: [String], liveTail: String) {
-        guard committedChars < full.count else {
-            return ([], "")
+    /// Fold the just-ended recognition segment into the turn (called on task restart).
+    private func accumulateSegment() {
+        let segment = currentSegmentText.trimmingCharacters(in: .whitespacesAndNewlines)
+        currentSegmentText = ""
+        guard !segment.isEmpty else { return }
+        committedFromTask = committedFromTask.isEmpty ? segment : committedFromTask + " " + segment
+        // Reflect the accumulated state immediately (no open partial tail right now).
+        turnText = committedFromTask
+        if turnText != lastEmittedTurnText {
+            lastEmittedTurnText = turnText
+            onCaptionUpdate?(turnText, false)
         }
-        let start = full.index(full.startIndex, offsetBy: committedChars)
-        let remaining = full[start...]
-        let terminators: Set<Character> = [".", "!", "?", "।"]
-
-        var sentences: [String] = []
-        var sentenceStart = remaining.startIndex
-        var consumedUpTo = remaining.startIndex
-        var idx = remaining.startIndex
-        while idx < remaining.endIndex {
-            if terminators.contains(remaining[idx]) {
-                let raw = String(remaining[sentenceStart...idx])
-                let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
-                if !trimmed.isEmpty { sentences.append(trimmed) }
-                idx = remaining.index(after: idx)
-                sentenceStart = idx
-                consumedUpTo = idx
-            } else {
-                idx = remaining.index(after: idx)
-            }
-        }
-
-        let liveTail = (sentenceStart < remaining.endIndex) ? String(remaining[sentenceStart...]) : ""
-        let consumedInRemaining = remaining.distance(from: remaining.startIndex, to: consumedUpTo)
-        committedChars += consumedInRemaining
-        return (sentences, liveTail)
     }
 
-    /// Emit any open partial as a finalized sentence.
-    /// - resetCursor: `true` when the recognition task is ending (a new task
-    ///   produces a fresh transcript); `false` when committing mid-task (e.g. on a
-    ///   pause), where the cursor must advance to the end of the current transcript.
-    private func commitTail(resetCursor: Bool) {
-        pauseTimer?.invalidate()
-        pauseTimer = nil
-        let trimmed = currentTail.trimmingCharacters(in: .whitespacesAndNewlines)
-        currentTail = ""
-        committedChars = resetCursor ? 0 : lastFullCount
-        guard !trimmed.isEmpty else { return }
-        onCaptionUpdate?(trimmed, true)
-    }
+    // MARK: - Turn end (pause / stop)
 
     /// Called when speech pauses (no new partial for `pauseInterval`): commit the
-    /// current bubble so the next utterance starts a fresh one.
-    @discardableResult
-    private func onPause() -> Bool {
-        guard isTranscribing, !currentTail.isEmpty else { return false }
-        commitTail(resetCursor: false)
-        return true
+    /// current turn so the next utterance starts a fresh bubble.
+    private func onPause() {
+        guard isTranscribing else { return }
+        commitTurn()
+    }
+
+    /// Emit the current turn as finalized, then reset turn state.
+    private func commitTurn() {
+        pauseTimer?.invalidate()
+        pauseTimer = nil
+        let final = turnText.trimmingCharacters(in: .whitespacesAndNewlines)
+        resetTurnState()
+        guard !final.isEmpty else { return }
+        onCaptionUpdate?(final, true)
+    }
+
+    private func resetTurnState() {
+        turnText = ""
+        committedFromTask = ""
+        currentSegmentText = ""
+        lastEmittedTurnText = ""
     }
 
     private func resetPauseTimer() {
@@ -309,8 +279,8 @@ final class VoiceTranscribeViewModel {
         }
     }
 
-    /// Swap in a fresh request+task on the (still-running) engine. The new task
-    /// produces a fresh transcript, so the char cursor resets.
+    /// Swap in a fresh request+task on the (still-running) engine. The turn
+    /// continues — only the per-task segment cursor resets.
     private func restartTask() {
         restartTimer?.invalidate()
         pauseTimer?.invalidate()
@@ -322,10 +292,7 @@ final class VoiceTranscribeViewModel {
 
         guard isTranscribing, let speechRecognizer, speechRecognizer.isAvailable else { return }
 
-        committedChars = 0
-        currentTail = ""
-        lastFullCount = 0
-
+        currentSegmentText = ""   // new task = fresh segment; committedFromTask kept
         removeTap()
         let request = newRequest()
         recognitionRequest = request
@@ -342,9 +309,7 @@ final class VoiceTranscribeViewModel {
     private func teardown() {
         restartTimer?.invalidate()
         restartTimer = nil
-        pauseTimer?.invalidate()
-        pauseTimer = nil
-        commitTail(resetCursor: true)
+        commitTurn()
         recognitionTask?.cancel()
         recognitionTask = nil
         recognitionRequest?.endAudio()

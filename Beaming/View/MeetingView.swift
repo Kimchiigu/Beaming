@@ -213,7 +213,7 @@ struct MeetingView: View {
                     .font(.system(size: 12))
                     .foregroundStyle(Color(hex: 0xE0533D))
                     .frame(maxWidth: .infinity, alignment: .leading)
-            } else if viewModel.captions.isEmpty && viewModel.liveBySpeaker.isEmpty {
+            } else if viewModel.captions.isEmpty {
                 Text(transcriber.isTranscribing ? "Mendengarkan…" : "Memulai transkripsi…")
                     .font(.system(size: 15))
                     .foregroundStyle(.secondary)
@@ -228,21 +228,14 @@ struct MeetingView: View {
         .padding(.horizontal, 24)
     }
 
-    /// Scrollable, auto-following chat of caption bubbles from everyone in the room.
-    /// captions is appended in chronological order, so we render it directly (no
-    /// per-render sort) — sorting on every streaming partial was the main-thread
-    /// bottleneck that lagged scrolling and starved transcription.
+    /// Scrollable, auto-following chat of turn bubbles (one per speaker turn, max 5).
     private var chatScroll: some View {
         ScrollViewReader { proxy in
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 10) {
                     ForEach(viewModel.captions) { msg in
-                        captionBubble(msg, isLive: false)
+                        captionBubble(msg)
                             .id(msg.id.uuidString)
-                    }
-                    ForEach(Array(viewModel.liveBySpeaker.values), id: \.speakerID) { live in
-                        captionBubble(live, isLive: true)
-                            .id("live-\(live.speakerID.uuidString)")
                     }
                     Color.clear.frame(height: 1).id("bottom")
                 }
@@ -250,7 +243,7 @@ struct MeetingView: View {
             }
             .frame(height: 190)
             .onChange(of: viewModel.captions.count) { _, _ in follow(proxy) }
-            .onChange(of: liveSignature) { _, _ in follow(proxy) }
+            .onChange(of: viewModel.captions.last?.text ?? "") { _, _ in follow(proxy) }
             .onAppear { follow(proxy) }
         }
     }
@@ -264,23 +257,17 @@ struct MeetingView: View {
         proxy.scrollTo("bottom", anchor: .bottom)
     }
 
-    /// Fingerprint of all live bubbles — changes as any speaker's partial streams in.
-    private var liveSignature: String {
-        viewModel.liveBySpeaker.values
-            .sorted(by: { $0.speakerID.uuidString < $1.speakerID.uuidString })
-            .map(\.text)
-            .joined(separator: "|")
-    }
-
     /// One chat bubble. This device's own captions are right-aligned green; everyone
-    /// else is left-aligned grey.
-    private func captionBubble(_ msg: CaptionMessage, isLive: Bool) -> some View {
+    /// else is left-aligned grey. The last bubble shows a "typing" indicator while a
+    /// turn is streaming.
+    private func captionBubble(_ msg: CaptionMessage) -> some View {
         let isOwn = msg.speakerID == viewModel.localUser.id
+        let isStreaming = viewModel.activeSpeakerID != nil && msg.id == viewModel.captions.last?.id
         return VStack(alignment: isOwn ? .trailing : .leading, spacing: 3) {
             Text(msg.speakerName)
                 .font(.system(size: 12, weight: .semibold))
                 .foregroundStyle(BeamingPalette.green)
-            Text(isLive ? msg.text + "…" : msg.text)
+            Text(isStreaming ? msg.text + "…" : msg.text)
                 .font(.system(size: 15))
                 .foregroundStyle(isOwn ? .white : .black)
                 .multilineTextAlignment(isOwn ? .trailing : .leading)
@@ -306,3 +293,4 @@ struct MeetingView: View {
         .environment(AppState())
     }
 }
+x

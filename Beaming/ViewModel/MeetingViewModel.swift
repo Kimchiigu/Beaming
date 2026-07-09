@@ -35,13 +35,14 @@ class MeetingViewModel {
     /// Whether calibration has been completed.
     var isCalibrationDone: Bool = false
 
-    // MARK: - Live captions (transcription feed, merged from all speakers)
+    // MARK: - Live captions (one bubble per speaking turn, max 5)
 
-    /// Committed caption bubbles (all speakers). Auto-pruned to the history window.
+    /// Turn bubbles, newest last. The last bubble is the currently-streaming turn.
     var captions: [CaptionMessage] = []
 
-    /// Currently-streaming partial per speaker (speakerID → live bubble).
-    var liveBySpeaker: [UUID: CaptionMessage] = [:]
+    /// Speaker whose turn is currently streaming (nil between turns). Read by the
+    /// view to show the "typing" indicator on the last bubble.
+    var activeSpeakerID: UUID?
     
     // MARK: - Managers
     
@@ -66,14 +67,11 @@ class MeetingViewModel {
     /// Guards leave/cleanup so it only runs once (back button + menu + endRoom).
     private var hasLeft = false
 
-    /// Caption history window + broadcast throttle.
-    private var captionPruneTimer: Timer?
-    private let captionHistoryWindow: TimeInterval = 300   // keep last 5 minutes
+    /// Broadcast throttle + the hard bubble cap requested for the chat.
     private var lastCaptionBroadcast: Date = .distantPast
     private let captionBroadcastMinInterval: TimeInterval = 0.2
-    /// Hard cap on the rendered list so a long session can't grow unbounded
-    /// (keeps per-partial render cost bounded — see chatScroll in MeetingView).
-    private let maxCaptions = 200
+    /// At most this many bubbles are kept; older ones are dropped.
+    private let maxCaptions = 5
     
     // MARK: - Init
     
@@ -100,7 +98,6 @@ class MeetingViewModel {
         // All users: show calibration first, then start audio after done
         showCalibration = true
         startFaceDownDetection()
-        startCaptionPruneTimer()
     }
     
     // MARK: - Calibration
@@ -135,21 +132,30 @@ class MeetingViewModel {
         }
     }
 
-    /// Place a caption into the merged feed (committed sentence or live partial).
+    /// Place a caption into the feed as a single turn-bubble. The bubble grows
+    /// while the same speaker keeps talking; a different speaker (or a new turn
+    /// after a pause) starts a fresh bubble. The list is capped at `maxCaptions`.
     private func applyCaption(speakerID: UUID, speakerName: String, text: String, isFinal: Bool) {
+        ensureActiveBubble(speakerID: speakerID, speakerName: speakerName)
+        setLastBubble(text: text)
         if isFinal {
-            if !text.isEmpty {
-                captions.append(CaptionMessage(speakerID: speakerID, speakerName: speakerName, text: text, date: Date()))
-            }
-            liveBySpeaker[speakerID] = nil
-        } else if text.isEmpty {
-            liveBySpeaker[speakerID] = nil
-        } else if liveBySpeaker[speakerID] != nil {
-            liveBySpeaker[speakerID]?.text = text
-        } else {
-            liveBySpeaker[speakerID] = CaptionMessage(speakerID: speakerID, speakerName: speakerName, text: text, date: Date())
+            // Turn ended — next caption (even from the same speaker) starts a new bubble.
+            activeSpeakerID = nil
         }
         enforceCaptionCap()
+    }
+
+    /// Make sure the last bubble belongs to `speakerID`; otherwise append a new one
+    /// (this is the "change bubble when another person talks" rule).
+    private func ensureActiveBubble(speakerID: UUID, speakerName: String) {
+        guard speakerID != activeSpeakerID || captions.isEmpty else { return }
+        captions.append(CaptionMessage(speakerID: speakerID, speakerName: speakerName, text: "", date: Date()))
+        activeSpeakerID = speakerID
+    }
+
+    private func setLastBubble(text: String) {
+        guard !captions.isEmpty else { return }
+        captions[captions.count - 1].text = text
     }
 
     /// Broadcast a caption to the room (host → all guests; guest → host, which relays).
@@ -168,24 +174,8 @@ class MeetingViewModel {
         }
     }
 
-    private func startCaptionPruneTimer() {
-        captionPruneTimer?.invalidate()
-        captionPruneTimer = Timer.scheduledTimer(withTimeInterval: 15, repeats: true) { [weak self] _ in
-            self?.pruneOldCaptions()
-        }
-    }
-
-    /// Drop caption bubbles older than the history window (runs on the prune timer).
-    private func pruneOldCaptions() {
-        let cutoff = Date().addingTimeInterval(-captionHistoryWindow)
-        captions.removeAll { $0.date < cutoff }
-        let stale = liveBySpeaker.filter { $0.value.date < cutoff }
-        for key in stale.keys { liveBySpeaker[key] = nil }
-        enforceCaptionCap()
-    }
-
     /// Cheap cap: only trims when over the limit. Called per partial, so it must be
-    /// near O(1) — the time-based prune runs separately on the 15s timer.
+    /// near O(1). Keeps only the newest `maxCaptions` bubbles.
     private func enforceCaptionCap() {
         guard captions.count > maxCaptions else { return }
         captions.removeFirst(captions.count - maxCaptions)
@@ -553,8 +543,6 @@ class MeetingViewModel {
         claimResolutionTimer = nil
         syncTimer?.invalidate()
         syncTimer = nil
-        captionPruneTimer?.invalidate()
-        captionPruneTimer = nil
         pendingClaims.removeAll()
         if isHost {
             networkManager.stopAdvertising()
