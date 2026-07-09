@@ -64,4 +64,6 @@ fastlane/test_output
 # custom
 .DS_Store
 **/.DS_Store
-start_claude.sh
+start_claude.shScripts/venv
+*.mlpackage
+tmp_speechbrain_model

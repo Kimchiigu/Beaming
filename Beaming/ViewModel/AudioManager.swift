@@ -67,6 +67,10 @@ class AudioManager {
     
     /// Callback when calibration completes.
     var onCalibrationComplete: (() -> Void)?
+
+    /// Callback fired for every raw audio buffer — used by SpeakerVerificationManager
+    /// to build and match voice embeddings without installing a second audio tap.
+    var onAudioBufferCaptured: ((AVAudioPCMBuffer) -> Void)?
     
     init() {
         updateThreshold()
@@ -244,7 +248,10 @@ class AudioManager {
         DispatchQueue.main.async { [weak self] in
             guard let self = self else { return }
             self.audioLevel = rms
-            
+
+            // Forward raw buffer for voice-profile processing (speaker verification)
+            self.onAudioBufferCaptured?(buffer)
+
             // If calibrating, collect samples instead of processing speech
             if self.isCalibrating {
                 self.calibrationSamples.append(rms)
