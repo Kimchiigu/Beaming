@@ -9,69 +9,90 @@ import AVFoundation
 import Foundation
 
 /// Controls the device's hardware flashlight (torch).
-/// When activated, does 3 quick blinks then turns off (less distracting).
+/// When activated, it smoothly fades in and out continuously like a beacon at max brightness.
 class FlashlightManager {
     
-    private var blinkTimer: Timer?
-    private var blinkCount: Int = 0
-    private let totalBlinks: Int = 3
-    private let blinkOnDuration: TimeInterval = 0.15
-    private let blinkOffDuration: TimeInterval = 0.10
+    private var beaconTimer: Timer?
+    private var isWaiting: Bool = false
+    private var waitTime: TimeInterval = 0.0
+    private var pulseProgress: Double = 0.0
+    private var pulsingUp: Bool = true
     
-    /// Start the 3-blink sequence (called when speaker lock is acquired).
+    /// Start or stop the continuous beacon effect.
     func setFlashlight(on: Bool) {
         if on {
-            startBlinkSequence()
+            startBeacon()
         } else {
-            stopBlinking()
+            stopBeacon()
         }
     }
     
-    /// 3 quick blinks: ON-OFF-ON-OFF-ON-OFF, then done.
-    private func startBlinkSequence() {
-        stopBlinking()
-        blinkCount = 0
+    private func startBeacon() {
+        guard beaconTimer == nil else { return } // Already running
         
-        // Immediately turn on for first blink
-        setTorch(on: true)
-        blinkCount = 1
+        isWaiting = false
+        waitTime = 0.0
+        pulseProgress = 0.0
+        pulsingUp = true
         
-        // Schedule alternating on/off
-        var step = 0
-        let totalSteps = (totalBlinks * 2) - 1  // ON-off-ON-off-ON = 5 steps (already did first ON)
-        
-        blinkTimer = Timer.scheduledTimer(withTimeInterval: blinkOnDuration, repeats: true) { [weak self] timer in
+        // Immediately start the first blink
+        beaconTimer = Timer.scheduledTimer(withTimeInterval: 0.05, repeats: true) { [weak self] timer in
             guard let self = self else {
                 timer.invalidate()
                 return
             }
             
-            step += 1
-            
-            if step > totalSteps {
-                // Done — turn off and stop
-                self.setTorch(on: false)
-                timer.invalidate()
-                self.blinkTimer = nil
-                return
+            if self.isWaiting {
+                self.waitTime += 0.05
+                if self.waitTime >= 6.0 {
+                    // Done waiting 6 seconds, start next blink
+                    self.isWaiting = false
+                    self.waitTime = 0.0
+                    self.pulsingUp = true
+                    self.pulseProgress = 0.0
+                }
+            } else {
+                // Pulse speed: 0.5s to fade in, 0.5s to fade out (1 second total blink)
+                if self.pulsingUp {
+                    self.pulseProgress += 0.1
+                    if self.pulseProgress >= 1.0 {
+                        self.pulseProgress = 1.0
+                        self.pulsingUp = false
+                    }
+                } else {
+                    self.pulseProgress -= 0.1
+                    if self.pulseProgress <= 0.0 {
+                        // Finished fading out, start waiting
+                        self.pulseProgress = 0.0
+                        self.isWaiting = true
+                        self.setTorch(level: 0.0) // Turn off completely
+                        return
+                    }
+                }
+                
+                // Smooth S-curve easing using cosine for natural fade in/out
+                let smoothed = (1.0 - cos(self.pulseProgress * .pi)) / 2.0
+                let level = 0.05 + (smoothed * 0.95)
+                self.setTorch(level: Float(level))
             }
-            
-            // Even steps = OFF, odd steps = ON
-            let isOn = (step % 2 == 0)
-            self.setTorch(on: isOn)
         }
     }
     
-    /// Stop any active blinking and turn off the torch.
+    /// Stop the pulsing and turn off the torch.
     func stopBlinking() {
-        blinkTimer?.invalidate()
-        blinkTimer = nil
-        blinkCount = 0
-        setTorch(on: false)
+        // Keep the old method name so callers don't need to change if they used it directly, 
+        // though setFlashlight is the primary API.
+        stopBeacon()
     }
     
-    /// Direct torch control.
-    private func setTorch(on: Bool) {
+    private func stopBeacon() {
+        beaconTimer?.invalidate()
+        beaconTimer = nil
+        setTorch(level: 0.0) // 0.0 turns it off
+    }
+    
+    /// Direct torch control with specific brightness level.
+    private func setTorch(level: Float) {
         guard let device = AVCaptureDevice.default(for: .video),
               device.hasTorch
         else {
@@ -80,10 +101,11 @@ class FlashlightManager {
         
         do {
             try device.lockForConfiguration()
-            device.torchMode = on ? .on : .off
-            if on {
-                // Low intensity so the blink is noticeable but not blinding.
-                try device.setTorchModeOn(level: 0.1)
+            if level <= 0.0 {
+                device.torchMode = .off
+            } else {
+                // Ensure level is within valid bounds [0.01, 1.0] to avoid crash
+                try device.setTorchModeOn(level: min(max(level, 0.01), 1.0))
             }
             device.unlockForConfiguration()
         } catch {
@@ -92,6 +114,6 @@ class FlashlightManager {
     }
     
     deinit {
-        stopBlinking()
+        stopBeacon()
     }
 }
