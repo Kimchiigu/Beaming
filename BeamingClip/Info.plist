@@ -6,11 +6,18 @@
 	<array>
 		<string>_beaming._tcp</string>
 	</array>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>Beaming mengubah ucapan menjadi teks di perangkat agar bisa ditampilkan sebagai transkripsi selama diskusi.</string>
 	<key>NSLocalNetworkUsageDescription</key>
 	<string>Beaming menghubungkan perangkat di sekitar melalui jaringan lokal untuk menjalankan diskusi.</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>Beaming menggunakan mikrofon untuk mendeteksi suaramu dan mengaktifkan lampu sebagai penanda pembicara.</string>
-	<key>NSSpeechRecognitionUsageDescription</key>
-	<string>Beaming mengubah ucapan menjadi teks di perangkat agar bisa ditampilkan sebagai transkripsi selama diskusi.</string>
+	<key>NSAppClip</key>
+	<dict>
+		<key>NSAppClipRequestEphemeralUserNotification</key>
+		<false/>
+		<key>NSAppClipRequestLocationConfirmation</key>
+		<false/>
+	</dict>
 </dict>
 </plist>

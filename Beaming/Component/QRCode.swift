@@ -72,7 +72,7 @@ struct QRShareSheet: View {
             }
             .padding(.horizontal, 16)
 
-            Text("Tunjukkan kode QR ke temanmu untuk ikuti diskusi")
+            Text("Tunjukkan kode QR ke temanmu untuk ikuti diskusi.\nBisa scan dari kamera atau app Beaming.")
                 .font(.system(size: 15))
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)

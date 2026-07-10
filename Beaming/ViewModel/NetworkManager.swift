@@ -18,6 +18,10 @@ class NetworkManager {
     /// Rooms discovered via Bonjour browsing
     var discoveredRooms: [NWBrowser.Result] = []
     
+    /// The port the listener is bound to (set when listener reaches .ready).
+    /// Used to embed in QR codes for direct App Clip TCP connections.
+    var listenerPort: UInt16?
+    
     /// Connections to peers (host keeps all guest connections, guest keeps one host connection)
     var peerConnections: [UUID: NWConnection] = [:]
     
@@ -56,7 +60,8 @@ class NetworkManager {
             listener?.stateUpdateHandler = { [weak self] state in
                 switch state {
                 case .ready:
-                    print("[NetworkManager] Listener ready on port: \(self?.listener?.port?.rawValue ?? 0)")
+                    self?.listenerPort = self?.listener?.port?.rawValue
+                    print("[NetworkManager] Listener ready on port: \(self?.listenerPort ?? 0)")
                 case .failed(let error):
                     print("[NetworkManager] Listener failed: \(error)")
                     self?.listener?.cancel()
@@ -311,6 +316,10 @@ class NetworkManager {
                 DispatchQueue.main.async {
                     completion(false)
                 }
+            case .waiting(let error):
+                print("[NetworkManager] Connection waiting: \(error) — likely awaiting local network permission")
+            case .preparing:
+                print("[NetworkManager] Connection preparing...")
             case .cancelled:
                 print("[NetworkManager] Host connection cancelled")
             default:

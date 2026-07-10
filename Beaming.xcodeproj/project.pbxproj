@@ -6,11 +6,71 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		361A246D30008DB500045EF9 /* BeamingClip.app in Embed App Clips */ = {isa = PBXBuildFile; fileRef = 361A245F30008DB500045EF9 /* BeamingClip.app */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		361A246B30008DB500045EF9 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = AEAECB832FF5F486009E24F5 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 361A245E30008DB500045EF9;
+			remoteInfo = BeamingClip;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		361A247230008DB500045EF9 /* Embed App Clips */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "$(CONTENTS_FOLDER_PATH)/AppClips";
+			dstSubfolderSpec = 16;
+			files = (
+				361A246D30008DB500045EF9 /* BeamingClip.app in Embed App Clips */,
+			);
+			name = "Embed App Clips";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
 /* Begin PBXFileReference section */
+		361A245F30008DB500045EF9 /* BeamingClip.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = BeamingClip.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		AEAECB8B2FF5F486009E24F5 /* Beaming.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Beaming.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		361A247130008DB500045EF9 /* Exceptions for "BeamingClip" folder in "BeamingClip" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 361A245E30008DB500045EF9 /* BeamingClip */;
+		};
+		361A247830008DF500045EF9 /* Exceptions for "Beaming" folder in "BeamingClip" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Assets.xcassets,
+				Component/QRCode.swift,
+				Component/Theme.swift,
+				Helpers/AppClipURLHelper.swift,
+				Helpers/LocalNetworkHelper.swift,
+				Model/AppState.swift,
+				Model/NetworkMessage.swift,
+				Model/Room.swift,
+				Model/User.swift,
+				View/CalibrationView.swift,
+				View/FaceDownView.swift,
+				View/MeetingView.swift,
+				View/PermissionSheet.swift,
+				ViewModel/AudioManager.swift,
+				ViewModel/FlashlightManager.swift,
+				ViewModel/MeetingViewModel.swift,
+				ViewModel/NetworkManager.swift,
+				ViewModel/VoiceTranscribeViewModel.swift,
+			);
+			target = 361A245E30008DB500045EF9 /* BeamingClip */;
+		};
 		36D724C92FF621A000C10806 /* Exceptions for "Beaming" folder in "Beaming" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
@@ -21,10 +81,19 @@
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
+		361A246030008DB500045EF9 /* BeamingClip */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				361A247130008DB500045EF9 /* Exceptions for "BeamingClip" folder in "BeamingClip" target */,
+			);
+			path = BeamingClip;
+			sourceTree = "<group>";
+		};
 		AEAECB8D2FF5F486009E24F5 /* Beaming */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
 				36D724C92FF621A000C10806 /* Exceptions for "Beaming" folder in "Beaming" target */,
+				361A247830008DF500045EF9 /* Exceptions for "Beaming" folder in "BeamingClip" target */,
 			);
 			path = Beaming;
 			sourceTree = "<group>";
@@ -32,6 +101,13 @@
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
+		361A245C30008DB500045EF9 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		AEAECB882FF5F486009E24F5 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -46,6 +122,7 @@
 			isa = PBXGroup;
 			children = (
 				AEAECB8D2FF5F486009E24F5 /* Beaming */,
+				361A246030008DB500045EF9 /* BeamingClip */,
 				AEAECB8C2FF5F486009E24F5 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -54,6 +131,7 @@
 			isa = PBXGroup;
 			children = (
 				AEAECB8B2FF5F486009E24F5 /* Beaming.app */,
+				361A245F30008DB500045EF9 /* BeamingClip.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -61,6 +139,28 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		361A245E30008DB500045EF9 /* BeamingClip */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 361A246E30008DB500045EF9 /* Build configuration list for PBXNativeTarget "BeamingClip" */;
+			buildPhases = (
+				361A245B30008DB500045EF9 /* Sources */,
+				361A245C30008DB500045EF9 /* Frameworks */,
+				361A245D30008DB500045EF9 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				361A246030008DB500045EF9 /* BeamingClip */,
+			);
+			name = BeamingClip;
+			packageProductDependencies = (
+			);
+			productName = BeamingClip;
+			productReference = 361A245F30008DB500045EF9 /* BeamingClip.app */;
+			productType = "com.apple.product-type.application.on-demand-install-capable";
+		};
 		AEAECB8A2FF5F486009E24F5 /* Beaming */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = AEAECB962FF5F487009E24F5 /* Build configuration list for PBXNativeTarget "Beaming" */;
@@ -68,10 +168,12 @@
 				AEAECB872FF5F486009E24F5 /* Sources */,
 				AEAECB882FF5F486009E24F5 /* Frameworks */,
 				AEAECB892FF5F486009E24F5 /* Resources */,
+				361A247230008DB500045EF9 /* Embed App Clips */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				361A246C30008DB500045EF9 /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				AEAECB8D2FF5F486009E24F5 /* Beaming */,
@@ -93,6 +195,9 @@
 				LastSwiftUpdateCheck = 2660;
 				LastUpgradeCheck = 2660;
 				TargetAttributes = {
+					361A245E30008DB500045EF9 = {
+						CreatedOnToolsVersion = 26.6;
+					};
 					AEAECB8A2FF5F486009E24F5 = {
 						CreatedOnToolsVersion = 26.6;
 					};
@@ -113,11 +218,19 @@
 			projectRoot = "";
 			targets = (
 				AEAECB8A2FF5F486009E24F5 /* Beaming */,
+				361A245E30008DB500045EF9 /* BeamingClip */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
+		361A245D30008DB500045EF9 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		AEAECB892FF5F486009E24F5 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -128,6 +241,13 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		361A245B30008DB500045EF9 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		AEAECB872FF5F486009E24F5 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -137,7 +257,85 @@
 		};
 /* End PBXSourcesBuildPhase section */
 
+/* Begin PBXTargetDependency section */
+		361A246C30008DB500045EF9 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 361A245E30008DB500045EF9 /* BeamingClip */;
+			targetProxy = 361A246B30008DB500045EF9 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
 /* Begin XCBuildConfiguration section */
+		361A246F30008DB500045EF9 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = BeamingClip/BeamingClip.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 3LU8LUNSN3;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = BeamingClip/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = BeamingClip;
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.nakata.Beaming.Clip;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		361A247030008DB500045EF9 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = BeamingClip/BeamingClip.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 3LU8LUNSN3;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = BeamingClip/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = BeamingClip;
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.nakata.Beaming.Clip;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
 		AEAECB942FF5F487009E24F5 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -264,9 +462,10 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = Beaming/Beaming.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = GLM4HJ3467;
+				DEVELOPMENT_TEAM = 3LU8LUNSN3;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Beaming/Info.plist;
@@ -274,7 +473,7 @@
 				INFOPLIST_KEY_NSCameraUsageDescription = "Beaming menggunakan kamera untuk memindai kode QR agar kamu bisa bergabung ke diskusi.";
 				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "Beaming menghubungkan perangkat di sekitar melalui jaringan lokal untuk menjalankan diskusi.";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Beaming menggunakan mikrofon untuk mendeteksi suaramu dan mengaktifkan lampu sebagai penanda pembicara.";
-				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "You can view a text transcription of your meeting in the app.";
+				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "Beaming mengubah ucapan menjadi teks di perangkat agar bisa ditampilkan sebagai transkripsi selama diskusi.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -285,7 +484,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.cestaux.Beaming;
+				PRODUCT_BUNDLE_IDENTIFIER = com.nakata.Beaming;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
@@ -302,9 +501,10 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = Beaming/Beaming.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = GLM4HJ3467;
+				DEVELOPMENT_TEAM = 3LU8LUNSN3;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Beaming/Info.plist;
@@ -312,7 +512,7 @@
 				INFOPLIST_KEY_NSCameraUsageDescription = "Beaming menggunakan kamera untuk memindai kode QR agar kamu bisa bergabung ke diskusi.";
 				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "Beaming menghubungkan perangkat di sekitar melalui jaringan lokal untuk menjalankan diskusi.";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Beaming menggunakan mikrofon untuk mendeteksi suaramu dan mengaktifkan lampu sebagai penanda pembicara.";
-				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "You can view a text transcription of your meeting in the app.";
+				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "Beaming mengubah ucapan menjadi teks di perangkat agar bisa ditampilkan sebagai transkripsi selama diskusi.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -323,7 +523,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.cestaux.Beaming;
+				PRODUCT_BUNDLE_IDENTIFIER = com.nakata.Beaming;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
@@ -338,6 +538,15 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
+		361A246E30008DB500045EF9 /* Build configuration list for PBXNativeTarget "BeamingClip" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				361A246F30008DB500045EF9 /* Debug */,
+				361A247030008DB500045EF9 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 		AEAECB862FF5F486009E24F5 /* Build configuration list for PBXProject "Beaming" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (

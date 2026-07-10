@@ -174,17 +174,25 @@ class AudioManager {
         // Don't start if already running
         guard audioEngine == nil else { return }
         
-        let engine = AVAudioEngine()
-        let inputNode = engine.inputNode
-        let format = inputNode.outputFormat(forBus: 0)
-        
-        // Configure audio session
+        // IMPORTANT: Configure audio session FIRST — inputNode.outputFormat
+        // returns an invalid format if the session isn't active yet, which
+        // crashes on real devices.
         do {
             let session = AVAudioSession.sharedInstance()
             try session.setCategory(.playAndRecord, mode: .measurement, options: [.defaultToSpeaker, .allowBluetooth])
             try session.setActive(true)
         } catch {
             print("[AudioManager] Audio session error: \(error)")
+            return
+        }
+        
+        let engine = AVAudioEngine()
+        let inputNode = engine.inputNode
+        let format = inputNode.outputFormat(forBus: 0)
+        
+        // Safety check: bail out if format is still invalid
+        guard format.sampleRate > 0, format.channelCount > 0 else {
+            print("[AudioManager] Invalid audio format (sampleRate=\(format.sampleRate), channels=\(format.channelCount)). Skipping.")
             return
         }
         

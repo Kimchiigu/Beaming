@@ -105,11 +105,15 @@ class MeetingViewModel {
     
     // MARK: - Calibration
     
-    /// The Bonjour service name encoded for QR sharing. Uses the HOST's name so
-    /// a guest sharing the QR still advertises the host's service. Format:
-    /// "hostName::::roomID" (matches NetworkManager.startAdvertising).
+    /// The URL-encoded QR string for sharing. Includes the host's local IP and
+    /// listener port so App Clip guests can connect directly via TCP (App Clips
+    /// cannot use Bonjour discovery). Format:
+    /// "https://axelnakata.github.io/join?room=hostName::::roomID&host=IP&port=PORT"
     var qrCodeString: String {
-        "\(room.hostName)::::\(room.id.uuidString)"
+        let roomCode = "\(room.hostName)::::\(room.id.uuidString)"
+        let hostIP = LocalNetworkHelper.getLocalIPAddress()
+        let port = networkManager.listenerPort
+        return AppClipURLHelper.buildJoinURL(roomCode: roomCode, hostIP: hostIP, port: port)
     }
 
     // MARK: - Live Captions

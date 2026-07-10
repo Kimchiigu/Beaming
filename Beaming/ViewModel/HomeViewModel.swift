@@ -24,6 +24,7 @@ class HomeViewModel {
 
     private var pendingAction: PendingAction?
     private enum PendingAction { case create, join }
+    private var pendingRoomCode: String?
 
     private let permissionKey = "hasShownPermission"
 
@@ -88,11 +89,13 @@ class HomeViewModel {
         navigateToMeeting = true
     }
 
-    /// The scanned QR encodes the host's Bonjour service name ("hostName::::roomID").
+    /// The scanned QR encodes the host's Bonjour service name ("hostName::::roomID")
+    /// wrapped in an App Clip URL. Supports both URL-encoded and raw room codes.
     func joinWithCode(_ code: String) {
         showQRScanner = false
+        let roomCode = AppClipURLHelper.extractRoomCode(from: code) ?? code
         let nm = NetworkManager()
-        let endpoint = NWEndpoint.service(name: code, type: "_beaming._tcp", domain: "local.", interface: nil)
+        let endpoint = NWEndpoint.service(name: roomCode, type: "_beaming._tcp", domain: "local.", interface: nil)
 
         isConnecting = true
         var didComplete = false
@@ -126,5 +129,22 @@ class HomeViewModel {
     func resetAfterMeeting() {
         activeMeetingVM = nil
         navigateToMeeting = false
+    }
+
+    // MARK: - Universal Link (App Clip QR scanned by user who has the full app)
+
+    /// Handle an incoming Universal Link. When a user who already has Beaming
+    /// scans an App Clip QR with the iPhone Camera, iOS opens the full app
+    /// with this URL instead of launching the App Clip.
+    func handleIncomingURL(_ url: URL) {
+        guard let code = AppClipURLHelper.extractRoomCode(from: url.absoluteString) else { return }
+
+        if UserDefaults.standard.bool(forKey: permissionKey) {
+            joinWithCode(code)
+        } else {
+            pendingRoomCode = code
+            pendingAction = .join
+            showPermission = true
+        }
     }
 }

@@ -149,6 +149,11 @@ struct HomeView: View {
         } message: {
             Text(viewModel.alertMessage)
         }
+        .onReceive(NotificationCenter.default.publisher(for: .appClipJoinURL)) { notif in
+            if let url = notif.userInfo?["url"] as? URL {
+                viewModel.handleIncomingURL(url)
+            }
+        }
     }
 }
 
