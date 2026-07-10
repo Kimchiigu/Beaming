@@ -18,7 +18,7 @@ struct OnboardingPageIndicator: View {
         HStack(spacing: 8) {
             ForEach(0..<numberOfPages, id: \.self) { index in
                 Capsule()
-                    .fill(index == currentPage ? activeColor : Color(hex: "CFEFD9"))
+                    .fill(index == currentPage ? activeColor : Color(hex: "6C63A6"))
                     .frame(width: index == currentPage ? 20 : 7, height: 7)
             }
         }
@@ -27,5 +27,5 @@ struct OnboardingPageIndicator: View {
 }
 
 #Preview {
-    OnboardingPageIndicator(numberOfPages: 3, currentPage: 0, activeColor: Color(hex: "1F6E4C"))
+    OnboardingPageIndicator(numberOfPages: 4, currentPage: 0, activeColor: Color(hex: "6C63A6"))
 }

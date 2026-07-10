@@ -16,11 +16,10 @@ final class OnboardingViewModel {
 
     /// 0 and 1 are the illustrated slides, 2 is the profile form.
     var currentPage: Int = 0
-    let totalPages = 3
+    let totalPages = 4
 
     var username: String = ""
     var selectedRole: OnboardingRole?
-    var isRolePickerExpanded: Bool = false
 
     /// Continue button on the last page is disabled until both fields are filled.
     var isFormValid: Bool {
@@ -43,7 +42,6 @@ final class OnboardingViewModel {
 
     func select(role: OnboardingRole) {
         selectedRole = role
-        isRolePickerExpanded = false
     }
 
     /// Persists the collected profile into `AppState`, which marks

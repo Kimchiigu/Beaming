@@ -13,84 +13,72 @@ struct OnboardingView: View {
     @Environment(AppState.self) private var appState
     @State private var viewModel = OnboardingViewModel()
 
-    private let brandGreen = Color(hex: "1F6E4C")
+    /// Used for the profile form page, which has no OnboardingPage entry.
+    private let formAccentColor = Color(hex: "6C63A6")
+
+    private var currentAccentColor: Color {
+        if viewModel.currentPage < OnboardingPage.all.count {
+            return OnboardingPage.all[viewModel.currentPage].accentColor
+        }
+        return formAccentColor
+    }
 
     var body: some View {
-        TabView(selection: $viewModel.currentPage) {
-
-            ForEach(OnboardingPage.all) { page in
-
-                OnboardingSlideView(page: page)
-
-                    .tag(page.id)
-
-            }
-
-            OnboardingFormView(viewModel: viewModel)
-
-                .tag(2)
-
-        }
-
-        .tabViewStyle(.page(indexDisplayMode: .never))
-
-        .animation(.easeInOut, value: viewModel.currentPage)
-
-        .ignoresSafeArea()
-
-        .overlay(alignment: .bottom) {
-
-            VStack(spacing: 16) {
-
-                OnboardingPageIndicator(
-
-                    numberOfPages: viewModel.totalPages,
-
-                    currentPage: viewModel.currentPage,
-
-                    activeColor: brandGreen
-
-                )
-
-                Button {
-
-                    if viewModel.isLastPage {
-
-                        viewModel.completeOnboarding(appState: appState)
-
-                    } else {
-
-                        withAnimation {
-
-                            viewModel.goToNextPage()
-
-                        }
-
-                    }
-
-                } label: {
-
-                    Text(viewModel.isLastPage ? "Continue" : "Selanjutnya")
-
-                        .font(.headline.weight(.semibold))
-
-                        .foregroundStyle(.white)
-
-                        .frame(maxWidth: .infinity)
-
-                        .padding(.vertical, 16)
-
+        ZStack(alignment: .bottom) {
+            TabView(selection: $viewModel.currentPage) {
+                ForEach(OnboardingPage.all) { page in
+                    OnboardingSlideView(page: page)
+                        .tag(page.id)
                 }
 
-                .background(brandGreen, in: Capsule())
-
+                OnboardingFormView(viewModel: viewModel)
+                    .tag(3)
             }
+            .tabViewStyle(.page(indexDisplayMode: .never))
+            .animation(.easeInOut, value: viewModel.currentPage)
+            .ignoresSafeArea()
 
-            .padding(.horizontal, 24)
-
-            .padding(.bottom, 24)
-
+            bottomControls
         }
+    }
+
+    private var bottomControls: some View {
+        VStack(spacing: 16) {
+            OnboardingPageIndicator(
+                numberOfPages: viewModel.totalPages,
+                currentPage: viewModel.currentPage,
+                activeColor: currentAccentColor
+            )
+
+            Button {
+                if viewModel.isLastPage {
+                    viewModel.completeOnboarding(appState: appState)
+                } else {
+                    withAnimation {
+                        viewModel.goToNextPage()
+                    }
+                }
+            } label: {
+                Text(viewModel.isLastPage ? "Mulai" : "Selanjutnya")
+                    .font(.headline.weight(.semibold))
+                    .foregroundStyle(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 16)
+            }
+            .background(currentAccentColor, in: Capsule())
+            .disabled(viewModel.isLastPage && !viewModel.isFormValid)
+            .opacity(
+                viewModel.isLastPage && !viewModel.isFormValid
+                ? 0.5
+                : 1
+            )
+            .animation(
+                .easeInOut(duration: 0.15),
+                value: viewModel.isFormValid
+            )
+        }
+        .padding(.horizontal, 24)
+        .padding(.bottom, 24)
     }
 }
 

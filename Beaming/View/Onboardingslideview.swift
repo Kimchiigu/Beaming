@@ -8,60 +8,75 @@
 import SwiftUI
 
 /// Generic illustrated onboarding slide, driven entirely by `OnboardingPage`
-/// data. Reused for both onboarding illustration screens — no duplicate
-/// view code between them.
+/// data. Reused for both onboarding illustration screens — the background
+/// treatment switches based on `page.backgroundStyle`.
 struct OnboardingSlideView: View {
     let page: OnboardingPage
 
-    private let imageTextSpacing: CGFloat = 40
-
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            Spacer()
+        ZStack {
+            backgroundLayer
+                .ignoresSafeArea()
 
-            VStack(spacing: imageTextSpacing) {
-                Image(page.imageName)
-                    .resizable()
-                    .scaledToFit()
-                    .frame(maxWidth: 260)
+            VStack(alignment: .leading, spacing: 0) {
+                switch page.backgroundStyle {
+                case .illustrationBleed:
+                    bleedImage
+
+                case .softBlobs:
+                    bleedImage
+                }
 
                 VStack(alignment: .leading, spacing: 12) {
                     Text(page.title)
-                        .font(.system(size: 26, weight: .bold))
+                        .font(.system(size: 28, weight: .bold))
                         .foregroundStyle(.black)
-                        .fixedSize(horizontal: false, vertical: true)
 
                     Text(page.description)
                         .font(.body)
                         .foregroundStyle(.black.opacity(0.65))
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.horizontal, 28)
+                .padding(.top, 28)
+                .padding(.bottom, 150)
             }
-
-            Spacer()
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
-        .background(
-            ZStack {
-                Color.white
+        .ignoresSafeArea(edges: .top)
+    }
 
-                Circle()
-                    .fill(Color(hex: "94F2CF").opacity(0.8))
-                    .frame(width: 260, height: 260)
-                    .blur(radius: 60)
-                    .offset(x: 120, y: -280)
+    /// Full-width image bled to the top edge.
+    private var bleedImage: some View {
+        Image(page.imageName)
+            .resizable()
+            .scaledToFit()
+            .frame(maxWidth: .infinity)
+            .ignoresSafeArea(edges: .top)
+    }
 
-                Circle()
-                    .fill(Color(hex: "94F2CF").opacity(0.8))
-                    .frame(width: 280, height: 280)
-                    .blur(radius: 60)
-                    .offset(x: -130, y: 300)
-            }
-            .ignoresSafeArea()
-        )
+    /// Kept for compatibility if another style needs centered image later.
+    private var centeredImage: some View {
+        Image(page.imageName)
+            .resizable()
+            .scaledToFit()
+            .frame(maxWidth: 260)
+            .frame(maxWidth: .infinity)
+    }
+
+    @ViewBuilder
+    private var backgroundLayer: some View {
+        switch page.backgroundStyle {
+        case .illustrationBleed:
+            Color.white
+
+        case .softBlobs:
+            Color.white
+        }
     }
 }
 
+extension OnboardingBackgroundStyle: Equatable {}
+
 #Preview {
-    OnboardingSlideView(page: OnboardingPage.all[0])
+    OnboardingSlideView(page: OnboardingPage.all[1])
 }

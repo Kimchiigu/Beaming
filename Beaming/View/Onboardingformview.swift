@@ -7,69 +7,46 @@
 
 import SwiftUI
 
-/// Third onboarding step: collects username + role.
+/// Third onboarding step: collects username + role via two selectable cards.
 /// Purely presentational — all state and validation lives in `OnboardingViewModel`.
 struct OnboardingFormView: View {
     @Bindable var viewModel: OnboardingViewModel
     @FocusState private var isUsernameFocused: Bool
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            HStack {
-                Button {
-                    withAnimation { viewModel.goToPreviousPage() }
-                } label: {
-                    Image(systemName: "chevron.left")
-                        .font(.system(size: 15, weight: .semibold))
-                        .foregroundStyle(.primary)
-                        .frame(width: 36, height: 36)
-                        .background(Circle().fill(.background.secondary))
-                }
-                .buttonStyle(.plain)
+        ScrollView {
+            VStack(alignment: .leading, spacing: 28) {
+                Text("Kenalan, yuk!")
+                    .font(.system(size: 32, weight: .bold))
+                    .padding(.top, 12)
 
-                Spacer()
-            }
-            .padding(.horizontal, 20)
-            .padding(.top, 8)
+                TextField("Nama", text: $viewModel.username)
+                    .focused($isUsernameFocused)
+                    .textInputAutocapitalization(.words)
+                    .autocorrectionDisabled()
+                    .padding(.horizontal, 20)
+                    .padding(.vertical, 16)
+                    .background(
+                        Capsule()
+                            .fill(Color.white)
+                            .overlay(Capsule().stroke(Color.black.opacity(0.08)))
+                    )
 
-            ScrollView {
-                VStack(alignment: .leading, spacing: 24) {
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Let's get to know you 👋")
-                            .font(.system(size: 28, weight: .bold))
-                        Text("Tell us your name and role to personalize your experience.")
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                    }
+                VStack(alignment: .leading, spacing: 16) {
+                    Text("Pilih peranmu")
+                        .font(.system(size: 17, weight: .semibold))
 
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Username")
-                            .font(.subheadline.weight(.semibold))
-                        TextField("Enter your username", text: $viewModel.username)
-                            .focused($isUsernameFocused)
-                            .textInputAutocapitalization(.never)
-                            .autocorrectionDisabled()
-                            .padding(.horizontal, 16)
-                            .padding(.vertical, 14)
-                            .background(
-                                RoundedRectangle(cornerRadius: 14)
-                                    .fill(.background.secondary)
-                            )
-                    }
-
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Role")
-                            .font(.subheadline.weight(.semibold))
-                        RoleDropdownField(
-                            selectedRole: viewModel.selectedRole,
-                            isExpanded: $viewModel.isRolePickerExpanded,
-                            onSelect: { viewModel.select(role: $0) }
+                    ForEach(OnboardingRole.allCases) { role in
+                        CardField(
+                            role: role,
+                            isSelected: viewModel.selectedRole == role,
+                            action: { viewModel.select(role: role) }
                         )
                     }
                 }
-                .padding(.horizontal, 24)
-                .padding(.top, 16)
             }
+            .padding(.horizontal, 24)
+            .padding(.bottom, 24)
         }
         .background(Color(.systemBackground).ignoresSafeArea())
     }
