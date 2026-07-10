@@ -37,12 +37,16 @@ class MeetingViewModel {
 
     // MARK: - Live captions (one bubble per speaking turn, max 5)
 
-    /// Turn bubbles, newest last. The last bubble is the currently-streaming turn.
+    /// Finalized turn bubbles (non-empty text only), newest last.
     var captions: [CaptionMessage] = []
 
-    /// Speaker whose turn is currently streaming (nil between turns). Read by the
-    /// view to show the "typing" indicator on the last bubble.
-    var activeSpeakerID: UUID?
+    /// True while THIS device is mid-turn (the local user is speaking). Drives the
+    /// ephemeral "sedang bicara…" placeholder bubble in the chat.
+    var isLocalSpeaking: Bool = false
+
+    /// Speaker of the most recent finalized turn; used to decide whether the next
+    /// turn appends a new bubble (new speaker / new turn) or not.
+    private var activeSpeakerID: UUID?
     
     // MARK: - Managers
     
@@ -67,9 +71,6 @@ class MeetingViewModel {
     /// Guards leave/cleanup so it only runs once (back button + menu + endRoom).
     private var hasLeft = false
 
-    /// Broadcast throttle + the hard bubble cap requested for the chat.
-    private var lastCaptionBroadcast: Date = .distantPast
-    private let captionBroadcastMinInterval: TimeInterval = 0.2
     /// At most this many bubbles are kept; older ones are dropped.
     private let maxCaptions = 5
     
@@ -111,20 +112,28 @@ class MeetingViewModel {
 
     // MARK: - Live Captions
 
-    /// Local transcription produced new text (called from VoiceTranscribeViewModel).
-    /// Applies it to the local feed AND broadcasts it to the room.
+    /// Local transcription event (called from VoiceTranscribeViewModel).
+    /// - isFinal == false → a turn just started: show the local "speaking" placeholder.
+    /// - isFinal == true  → the turn ended: append its text as a bubble + broadcast it.
     func handleLocalCaption(text: String, isFinal: Bool) {
         let speakerID = localUser.id
         let speakerName = localUser.name
-        applyCaption(speakerID: speakerID, speakerName: speakerName, text: text, isFinal: isFinal)
-        broadcastCaption(speakerID: speakerID, speakerName: speakerName, text: text, isFinal: isFinal)
+        if isFinal {
+            isLocalSpeaking = false
+            guard !text.isEmpty else { return }   // nothing recognized → no bubble, no broadcast
+            appendTurn(speakerID: speakerID, speakerName: speakerName, text: text)
+            // Only finalized turns go on the wire — no per-word streaming.
+            sendCaption(speakerID: speakerID, speakerName: speakerName, text: text, isFinal: true)
+        } else {
+            isLocalSpeaking = true
+        }
     }
 
-    /// A caption arrived from a peer over the network.
+    /// A finalized caption arrived from a peer over the network.
     private func handleRemoteCaption(speakerID: UUID, speakerName: String, text: String, isFinal: Bool) {
-        // Ignore our own captions echoed back.
-        guard speakerID != localUser.id else { return }
-        applyCaption(speakerID: speakerID, speakerName: speakerName, text: text, isFinal: isFinal)
+        // Ignore our own captions echoed back, and empty finals.
+        guard speakerID != localUser.id, !text.isEmpty else { return }
+        appendTurn(speakerID: speakerID, speakerName: speakerName, text: text)
         // Star topology: the host relays guest captions to the OTHER guests so
         // everyone sees them (guests only have a direct line to the host).
         if isHost {
@@ -132,40 +141,16 @@ class MeetingViewModel {
         }
     }
 
-    /// Place a caption into the feed as a single turn-bubble. The bubble grows
-    /// while the same speaker keeps talking; a different speaker (or a new turn
-    /// after a pause) starts a fresh bubble. The list is capped at `maxCaptions`.
-    private func applyCaption(speakerID: UUID, speakerName: String, text: String, isFinal: Bool) {
-        ensureActiveBubble(speakerID: speakerID, speakerName: speakerName)
-        setLastBubble(text: text)
-        if isFinal {
-            // Turn ended — next caption (even from the same speaker) starts a new bubble.
-            activeSpeakerID = nil
-        }
+    /// Append a finalized turn as a new bubble (each turn / each new speaker = a new
+    /// bubble). The list is capped at `maxCaptions`.
+    private func appendTurn(speakerID: UUID, speakerName: String, text: String) {
+        captions.append(CaptionMessage(speakerID: speakerID, speakerName: speakerName, text: text, date: Date()))
+        activeSpeakerID = speakerID
         enforceCaptionCap()
     }
 
-    /// Make sure the last bubble belongs to `speakerID`; otherwise append a new one
-    /// (this is the "change bubble when another person talks" rule).
-    private func ensureActiveBubble(speakerID: UUID, speakerName: String) {
-        guard speakerID != activeSpeakerID || captions.isEmpty else { return }
-        captions.append(CaptionMessage(speakerID: speakerID, speakerName: speakerName, text: "", date: Date()))
-        activeSpeakerID = speakerID
-    }
-
-    private func setLastBubble(text: String) {
-        guard !captions.isEmpty else { return }
-        captions[captions.count - 1].text = text
-    }
-
-    /// Broadcast a caption to the room (host → all guests; guest → host, which relays).
-    private func broadcastCaption(speakerID: UUID, speakerName: String, text: String, isFinal: Bool) {
-        // Throttle partials (they fire several times/sec); finals always go through.
-        if !isFinal {
-            let now = Date()
-            guard now.timeIntervalSince(lastCaptionBroadcast) >= captionBroadcastMinInterval else { return }
-            lastCaptionBroadcast = now
-        }
+    /// Send a caption to the room (host → all guests; guest → host, which relays).
+    private func sendCaption(speakerID: UUID, speakerName: String, text: String, isFinal: Bool) {
         let msg = NetworkMessage.caption(speakerID: speakerID, speakerName: speakerName, text: text, isFinal: isFinal)
         if isHost {
             networkManager.broadcastMessage(msg)
@@ -174,8 +159,7 @@ class MeetingViewModel {
         }
     }
 
-    /// Cheap cap: only trims when over the limit. Called per partial, so it must be
-    /// near O(1). Keeps only the newest `maxCaptions` bubbles.
+    /// Cheap cap: keeps only the newest `maxCaptions` bubbles.
     private func enforceCaptionCap() {
         guard captions.count > maxCaptions else { return }
         captions.removeFirst(captions.count - maxCaptions)

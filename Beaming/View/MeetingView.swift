@@ -229,13 +229,28 @@ struct MeetingView: View {
     }
 
     /// Scrollable, auto-following chat of turn bubbles (one per speaker turn, max 5).
+    /// Each row is an Equatable view, so when a new bubble arrives only the NEW row
+    /// renders — historical rows are reused as-is (no re-render, no lag).
     private var chatScroll: some View {
         ScrollViewReader { proxy in
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 10) {
                     ForEach(viewModel.captions) { msg in
-                        captionBubble(msg)
+                        CaptionBubbleView(msg: msg, isOwn: msg.speakerID == viewModel.localUser.id)
+                            .equatable()
                             .id(msg.id.uuidString)
+                    }
+                    if viewModel.isLocalSpeaking {
+                        CaptionBubbleView(
+                            msg: CaptionMessage(
+                                speakerID: viewModel.localUser.id,
+                                speakerName: viewModel.localUser.name,
+                                text: "",
+                                date: Date()
+                            ),
+                            isOwn: true
+                        )
+                        .id("local-placeholder")
                     }
                     Color.clear.frame(height: 1).id("bottom")
                 }
@@ -243,31 +258,38 @@ struct MeetingView: View {
             }
             .frame(height: 190)
             .onChange(of: viewModel.captions.count) { _, _ in follow(proxy) }
-            .onChange(of: viewModel.captions.last?.text ?? "") { _, _ in follow(proxy) }
+            .onChange(of: viewModel.isLocalSpeaking) { _, _ in follow(proxy) }
             .onAppear { follow(proxy) }
         }
     }
 
-    /// Throttled, non-animated auto-scroll. A streaming partial fires several times
-    /// per second; animating+laying out the whole list on each one was too costly.
+    /// Throttled, non-animated auto-scroll.
     private func follow(_ proxy: ScrollViewProxy) {
         let now = Date()
         guard now.timeIntervalSince(lastScrollAt) >= 0.2 else { return }
         lastScrollAt = now
         proxy.scrollTo("bottom", anchor: .bottom)
     }
+}
 
-    /// One chat bubble. This device's own captions are right-aligned green; everyone
-    /// else is left-aligned grey. The last bubble shows a "typing" indicator while a
-    /// turn is streaming.
-    private func captionBubble(_ msg: CaptionMessage) -> some View {
-        let isOwn = msg.speakerID == viewModel.localUser.id
-        let isStreaming = viewModel.activeSpeakerID != nil && msg.id == viewModel.captions.last?.id
+/// One chat bubble. Equatable so SwiftUI can skip re-rendering it when its inputs
+/// are unchanged — this is what keeps history from re-rendering on every new message.
+private struct CaptionBubbleView: View, Equatable {
+    let msg: CaptionMessage
+    let isOwn: Bool
+
+    static func == (lhs: CaptionBubbleView, rhs: CaptionBubbleView) -> Bool {
+        lhs.isOwn == rhs.isOwn && lhs.msg == rhs.msg
+    }
+
+    var body: some View {
+        // Empty text = the local "speaking" placeholder while a turn is in progress.
+        let display = msg.text.isEmpty ? "sedang bicara…" : msg.text
         return VStack(alignment: isOwn ? .trailing : .leading, spacing: 3) {
             Text(msg.speakerName)
                 .font(.system(size: 12, weight: .semibold))
                 .foregroundStyle(BeamingPalette.green)
-            Text(isStreaming ? msg.text + "…" : msg.text)
+            Text(display)
                 .font(.system(size: 15))
                 .foregroundStyle(isOwn ? .white : .black)
                 .multilineTextAlignment(isOwn ? .trailing : .leading)
@@ -293,4 +315,4 @@ struct MeetingView: View {
         .environment(AppState())
     }
 }
-x
+

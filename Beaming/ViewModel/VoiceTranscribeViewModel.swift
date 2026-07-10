@@ -5,16 +5,12 @@
 //  Created by Christopher Hardy Gunawan on 09/07/26.
 //
 //  Live speech-to-text engine for the in-meeting captions. Wraps SFSpeechRecognizer
-//  + its own AVAudioEngine and EMITS one cumulative "turn" string via
-//  `onCaptionUpdate`. The caller (MeetingViewModel) turns each turn into a single
-//  chat bubble and starts a new bubble when the speaker changes.
-//
-//  Semantics of `onCaptionUpdate(text, isFinal)`:
-//  - isFinal == false → the FULL text of the current speaking turn so far (grows as
-//    the user talks; accumulates across SFSpeech's ~60s task restarts so earlier
-//    words are never lost mid-turn).
-//  - isFinal == true  → the turn just ended (a pause in speech); `text` is the full
-//    turn text. After this, internal turn state resets so the next utterance is fresh.
+//  + its own AVAudioEngine and emits AT MOST two events per speaking turn:
+//  - onCaptionUpdate("",  false) when a turn starts  → the UI shows a placeholder.
+//  - onCaptionUpdate(text, true ) when a turn ends    → the UI fills the bubble.
+//  No per-word streaming (that re-rendered the whole list and caused lag). The full
+//  turn text is accumulated internally (across SFSpeech's ~60s task restarts) and
+//  emitted once, ~2s after the speaker goes silent.
 //
 
 import Foundation
@@ -22,8 +18,9 @@ import AVFoundation
 import Speech
 import Observation
 
-/// One caption bubble in the transcription feed.
-struct CaptionMessage: Identifiable {
+/// One caption bubble in the transcription feed. Equatable so the chat can skip
+/// re-rendering unchanged (historical) rows — only the new/changed bubble renders.
+struct CaptionMessage: Identifiable, Equatable {
     let id = UUID()
     let speakerID: UUID
     let speakerName: String
@@ -51,7 +48,7 @@ final class VoiceTranscribeViewModel {
     /// Last error, surfaced in the UI. nil when healthy.
     private(set) var errorMessage: String?
 
-    /// Fired on the main actor with the current turn text. See class docs.
+    /// Fired on the main actor. See class docs (turn-start placeholder, or finalized text).
     var onCaptionUpdate: ((_ text: String, _ isFinal: Bool) -> Void)?
 
     // MARK: - Speech plumbing
@@ -66,25 +63,32 @@ final class VoiceTranscribeViewModel {
     private let restartInterval: TimeInterval = 50
     private var restartTimer: Timer?
 
-    /// Pause detection: when no new partial arrives for this long, the current turn
-    /// is committed (so the next utterance starts a fresh bubble).
+    /// Recovery timer used when the recognizer is temporarily unavailable (Apple
+    /// throttles it after heavy use) — retries instead of silently dying.
+    private var retryTimer: Timer?
+
+    /// Monotonic token for the active recognition task. Callbacks from a task we've
+    /// already cancelled/replaced are ignored — this prevents a cancel→restart
+    /// cascade (cancelling a task fires its handler one last time).
+    private var currentTaskToken: Int = 0
+
+    /// A turn ends after this much silence → emit the finalized text.
     private var pauseTimer: Timer?
-    private let pauseInterval: TimeInterval = 1.2
+    private let pauseInterval: TimeInterval = 2.0
 
-    // MARK: - Turn state (one bubble per speaking turn)
+    // MARK: - Turn state
 
-    /// Full text of the current speaking turn so far (what's emitted to the UI).
+    /// True while the local user is inside a speaking turn (between turn-start and finalize).
+    private var inTurn: Bool = false
+
+    /// Full text of the current turn so far (accumulated across task restarts).
     private var turnText: String = ""
 
-    /// Text finalized from earlier recognition segments within this turn
-    /// (accumulated across SFSpeech's ~60s task restarts so words aren't lost).
+    /// Text finalized from earlier recognition segments within this turn.
     private var committedFromTask: String = ""
 
     /// The current recognition task's cumulative transcript (resets on restart).
     private var currentSegmentText: String = ""
-
-    /// Last value emitted, to skip no-op duplicates (identical repeated partials).
-    private var lastEmittedTurnText: String = ""
 
     /// Recognition locale. Defaults to Indonesian; falls back if unavailable.
     init(locale: Locale = Locale(identifier: "id-ID")) {
@@ -143,19 +147,8 @@ final class VoiceTranscribeViewModel {
                                     options: [.defaultToSpeaker, .allowBluetooth])
             try session.setActive(true, options: .notifyOthersOnDeactivation)
 
-            let request = newRequest()
-            recognitionRequest = request
-            installTap(for: request)
-
-            if !audioEngine.isRunning {
-                try audioEngine.start()
-            }
-
-            recognitionTask = speechRecognizer?.recognitionTask(with: request) { [weak self] result, error in
-                Task { @MainActor in self?.handle(result: result, error: error) }
-            }
-
             isTranscribing = true
+            startNewTask()   // installs the tap, starts the engine, builds the task
             scheduleRestart()
         } catch {
             errorMessage = "Gagal memulai transkripsi: \(error.localizedDescription)"
@@ -165,7 +158,7 @@ final class VoiceTranscribeViewModel {
 
     private func newRequest() -> SFSpeechAudioBufferRecognitionRequest {
         let request = SFSpeechAudioBufferRecognitionRequest()
-        request.shouldReportPartialResults = true   // stream word-by-word
+        request.shouldReportPartialResults = true
         // Prefer on-device recognition when supported (privacy + offline).
         if speechRecognizer?.supportsOnDeviceRecognition ?? false {
             request.requiresOnDeviceRecognition = true
@@ -177,6 +170,9 @@ final class VoiceTranscribeViewModel {
         guard !hasTap else { return }
         let inputNode = audioEngine.inputNode
         let format = inputNode.outputFormat(forBus: 0)
+        // A zero sample rate means the input isn't ready (session not active for
+        // input). Installing the tap now would trap, so bail out gracefully.
+        guard format.sampleRate > 0 else { return }
         inputNode.installTap(onBus: 0, bufferSize: 1024, format: format) { buffer, _ in
             request.append(buffer)
         }
@@ -191,7 +187,13 @@ final class VoiceTranscribeViewModel {
 
     // MARK: - Result handling
 
-    private func handle(result: SFSpeechRecognitionResult?, error: Error?) {
+    private func handle(result: SFSpeechRecognitionResult?, error: Error?, token: Int) {
+        // Ignore callbacks from a task we've already cancelled/replaced. Without this,
+        // cancelling a task (which fires its handler one last time) would re-enter
+        // restartTask and cascade, burning through tasks until Apple throttles the
+        // recognizer and speech silently stops.
+        guard token == currentTaskToken else { return }
+
         let taskEnded = (error != nil) || (result?.isFinal == true)
 
         if let result, !taskEnded {
@@ -201,7 +203,7 @@ final class VoiceTranscribeViewModel {
         if taskEnded {
             // SFSpeech ended this recognition task (~60s limit). Fold the finished
             // segment into the turn so its text survives, then start a fresh task —
-            // the turn continues (no new bubble yet).
+            // the turn continues (no finalize emitted yet).
             accumulateSegment()
             if isTranscribing {
                 restartTask()
@@ -209,16 +211,21 @@ final class VoiceTranscribeViewModel {
         }
     }
 
-    /// A new partial arrived: grow the current turn's text and emit it.
+    /// Accumulate the partial into the current turn. Emit a turn-start placeholder
+    /// once (when real text is first detected). Do NOT stream word-by-word.
     private func applyPartial(_ full: String) {
         currentSegmentText = full
-        turnText = committedFromTask.isEmpty ? full : (committedFromTask + " " + full)
+        let next = committedFromTask.isEmpty ? full : (committedFromTask + " " + full)
+        let changed = (next != turnText)
+        turnText = next
 
-        // Only emit + reset the pause timer when the turn text actually changed —
-        // identical repeated partials mean the user paused, so let the timer fire.
-        if turnText != lastEmittedTurnText {
-            lastEmittedTurnText = turnText
-            onCaptionUpdate?(turnText, false)
+        if !turnText.isEmpty && !inTurn {
+            inTurn = true
+            onCaptionUpdate?("", false)   // turn started → placeholder bubble
+        }
+
+        // Re-arm the turn-end timer only when speech is actually progressing.
+        if changed {
             resetPauseTimer()
         }
     }
@@ -227,40 +234,44 @@ final class VoiceTranscribeViewModel {
     private func accumulateSegment() {
         let segment = currentSegmentText.trimmingCharacters(in: .whitespacesAndNewlines)
         currentSegmentText = ""
-        guard !segment.isEmpty else { return }
-        committedFromTask = committedFromTask.isEmpty ? segment : committedFromTask + " " + segment
-        // Reflect the accumulated state immediately (no open partial tail right now).
+        if !segment.isEmpty {
+            committedFromTask = committedFromTask.isEmpty ? segment : committedFromTask + " " + segment
+        }
         turnText = committedFromTask
-        if turnText != lastEmittedTurnText {
-            lastEmittedTurnText = turnText
-            onCaptionUpdate?(turnText, false)
+        if inTurn {
+            resetPauseTimer()   // turn continues across the restart
         }
     }
 
-    // MARK: - Turn end (pause / stop)
+    // MARK: - Turn end
 
-    /// Called when speech pauses (no new partial for `pauseInterval`): commit the
-    /// current turn so the next utterance starts a fresh bubble.
+    /// Called when speech pauses for `pauseInterval`: emit the finalized turn text.
     private func onPause() {
-        guard isTranscribing else { return }
+        guard isTranscribing, inTurn else { return }
         commitTurn()
+        // Start a fresh recognition task so any trailing/late partial SFSpeech still
+        // emits for the just-finished utterance can't re-trigger a turn and duplicate
+        // the bubble. The new task only sees audio from this point on.
+        restartTask()
     }
 
-    /// Emit the current turn as finalized, then reset turn state.
     private func commitTurn() {
         pauseTimer?.invalidate()
         pauseTimer = nil
         let final = turnText.trimmingCharacters(in: .whitespacesAndNewlines)
+        let wasInTurn = inTurn
         resetTurnState()
-        guard !final.isEmpty else { return }
+        guard wasInTurn else { return }
+        // Emit the full turn text (may be empty if nothing was recognized; the VM
+        // drops it in that case so no stuck placeholder remains).
         onCaptionUpdate?(final, true)
     }
 
     private func resetTurnState() {
+        inTurn = false
         turnText = ""
         committedFromTask = ""
         currentSegmentText = ""
-        lastEmittedTurnText = ""
     }
 
     private func resetPauseTimer() {
@@ -279,29 +290,73 @@ final class VoiceTranscribeViewModel {
         }
     }
 
-    /// Swap in a fresh request+task on the (still-running) engine. The turn
-    /// continues — only the per-task segment cursor resets.
+    /// Cancel the current task and start a fresh one on the (still-running) engine.
+    /// The turn continues — only the per-task segment cursor resets.
     private func restartTask() {
         restartTimer?.invalidate()
-        pauseTimer?.invalidate()
-        pauseTimer = nil
-        recognitionTask?.cancel()
-        recognitionTask = nil
-        recognitionRequest?.endAudio()
-        recognitionRequest = nil
+        retryTimer?.invalidate()
+        retryTimer = nil
+        // Fold the current segment into the turn BEFORE cancelling the task, so its
+        // text survives the restart. (No-op when called after a natural task end,
+        // which already folded it via handle().)
+        accumulateSegment()
+        teardownCurrentTask()   // bumps the token so the old task's final callback is ignored
+        startNewTask()
+        scheduleRestart()
+    }
 
-        guard isTranscribing, let speechRecognizer, speechRecognizer.isAvailable else { return }
+    /// Build the request + tap + recognition task for the current engine. If the
+    /// recognizer is temporarily unavailable (Apple throttles it after heavy use),
+    /// it retries shortly instead of silently dying.
+    private func startNewTask() {
+        guard isTranscribing, let speechRecognizer else { return }
+        guard speechRecognizer.isAvailable else {
+            print("[Transcriber] Recognizer unavailable; retrying in 1.5s")
+            retryTimer?.invalidate()
+            retryTimer = Timer.scheduledTimer(withTimeInterval: 1.5, repeats: false) { [weak self] _ in
+                Task { @MainActor in self?.startNewTask() }
+            }
+            return
+        }
 
         currentSegmentText = ""   // new task = fresh segment; committedFromTask kept
         removeTap()
         let request = newRequest()
         recognitionRequest = request
-        installTap(for: request)
+        installTap(for: request)        // install the tap BEFORE starting the engine
 
-        recognitionTask = speechRecognizer.recognitionTask(with: request) { [weak self] result, error in
-            Task { @MainActor in self?.handle(result: result, error: error) }
+        // If the tap didn't install (input not ready), don't start the engine/task.
+        guard hasTap else {
+            errorMessage = "Input audio belum siap. Coba lagi sebentar."
+            return
         }
-        scheduleRestart()
+
+        // First run: start the engine now (tap is already installed). The restart
+        // path keeps the already-running engine.
+        if !audioEngine.isRunning {
+            do {
+                try audioEngine.start()
+            } catch {
+                errorMessage = "Gagal memulai transkripsi: \(error.localizedDescription)"
+                removeTap()
+                return
+            }
+        }
+
+        currentTaskToken += 1
+        let token = currentTaskToken
+        recognitionTask = speechRecognizer.recognitionTask(with: request) { [weak self] result, error in
+            Task { @MainActor in self?.handle(result: result, error: error, token: token) }
+        }
+    }
+
+    /// Tear down the current task/request and invalidate its pending callbacks.
+    private func teardownCurrentTask() {
+        currentTaskToken += 1   // any in-flight callback from the old task is now stale
+        recognitionTask?.cancel()
+        recognitionTask = nil
+        recognitionRequest?.endAudio()
+        recognitionRequest = nil
     }
 
     // MARK: - Teardown
@@ -309,11 +364,10 @@ final class VoiceTranscribeViewModel {
     private func teardown() {
         restartTimer?.invalidate()
         restartTimer = nil
+        retryTimer?.invalidate()
+        retryTimer = nil
         commitTurn()
-        recognitionTask?.cancel()
-        recognitionTask = nil
-        recognitionRequest?.endAudio()
-        recognitionRequest = nil
+        teardownCurrentTask()
         removeTap()
         if audioEngine.isRunning {
             audioEngine.stop()
