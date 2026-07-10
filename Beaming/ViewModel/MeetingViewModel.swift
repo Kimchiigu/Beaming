@@ -48,6 +48,8 @@ class MeetingViewModel {
     let networkManager: NetworkManager
     let audioManager = AudioManager()
     let flashlightManager = FlashlightManager()
+    /// Speaker verification: gates flashlight claims to the local user's voice only.
+    let speakerVerificationManager = SpeakerVerificationManager()
     
     // MARK: - Private
     
@@ -74,6 +76,9 @@ class MeetingViewModel {
     /// Hard cap on the rendered list so a long session can't grow unbounded
     /// (keeps per-partial render cost bounded — see chatScroll in MeetingView).
     private let maxCaptions = 200
+    
+    /// Tracks local speaking state for gating audio buffers to CoreML.
+    private var isCurrentlySpeaking = false
     
     // MARK: - Init
     
@@ -197,8 +202,20 @@ class MeetingViewModel {
     
     /// Start the voice calibration process.
     func startCalibration() {
+        // Wire raw buffer callback → speaker verification (must be set BEFORE calibration starts)
+        audioManager.onAudioBufferCaptured = { [weak self] buffer in
+            guard let self = self else { return }
+            self.speakerVerificationManager.processAudioBuffer(buffer, isSpeaking: self.isCurrentlySpeaking)
+        }
+
+        // Start voice-profile enrollment alongside RMS calibration
+        speakerVerificationManager.clearProfile()
+        speakerVerificationManager.startEnrollment()
+
         audioManager.onCalibrationComplete = { [weak self] in
             guard let self = self else { return }
+            // Finish voice-profile enrollment with the captured audio
+            self.speakerVerificationManager.finishEnrollment()
             self.isCalibrationDone = true
             
             // Short delay then dismiss calibration and start listening
@@ -227,8 +244,13 @@ class MeetingViewModel {
     private func setupAudio() {
         audioManager.onSpeakingStateChanged = { [weak self] speaking, rmsLevel in
             guard let self = self else { return }
+            self.isCurrentlySpeaking = speaking
             if speaking {
-                self.claimSpeaker(rmsLevel: rmsLevel)
+                // Only claim the speaker lock if CoreML confirms this is the local user's voice.
+                // Falls back to RMS-only when no voice profile / model is present.
+                if self.speakerVerificationManager.isMyVoice {
+                    self.claimSpeaker(rmsLevel: rmsLevel)
+                }
             } else {
                 self.releaseSpeaker()
             }
