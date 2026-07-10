@@ -34,6 +34,19 @@ class MeetingViewModel {
     
     /// Whether calibration has been completed.
     var isCalibrationDone: Bool = false
+
+    // MARK: - Live captions (one bubble per speaking turn, max 5)
+
+    /// Finalized turn bubbles (non-empty text only), newest last.
+    var captions: [CaptionMessage] = []
+
+    /// True while THIS device is mid-turn (the local user is speaking). Drives the
+    /// ephemeral "sedang bicara…" placeholder bubble in the chat.
+    var isLocalSpeaking: Bool = false
+
+    /// Speaker of the most recent finalized turn; used to decide whether the next
+    /// turn appends a new bubble (new speaker / new turn) or not.
+    private var activeSpeakerID: UUID?
     
     // MARK: - Managers
     
@@ -57,6 +70,9 @@ class MeetingViewModel {
 
     /// Guards leave/cleanup so it only runs once (back button + menu + endRoom).
     private var hasLeft = false
+
+    /// At most this many bubbles are kept; older ones are dropped.
+    private let maxCaptions = 5
     
     // MARK: - Init
     
@@ -92,6 +108,61 @@ class MeetingViewModel {
     /// "hostName::::roomID" (matches NetworkManager.startAdvertising).
     var qrCodeString: String {
         "\(room.hostName)::::\(room.id.uuidString)"
+    }
+
+    // MARK: - Live Captions
+
+    /// Local transcription event (called from VoiceTranscribeViewModel).
+    /// - isFinal == false → a turn just started: show the local "speaking" placeholder.
+    /// - isFinal == true  → the turn ended: append its text as a bubble + broadcast it.
+    func handleLocalCaption(text: String, isFinal: Bool) {
+        let speakerID = localUser.id
+        let speakerName = localUser.name
+        if isFinal {
+            isLocalSpeaking = false
+            guard !text.isEmpty else { return }   // nothing recognized → no bubble, no broadcast
+            appendTurn(speakerID: speakerID, speakerName: speakerName, text: text)
+            // Only finalized turns go on the wire — no per-word streaming.
+            sendCaption(speakerID: speakerID, speakerName: speakerName, text: text, isFinal: true)
+        } else {
+            isLocalSpeaking = true
+        }
+    }
+
+    /// A finalized caption arrived from a peer over the network.
+    private func handleRemoteCaption(speakerID: UUID, speakerName: String, text: String, isFinal: Bool) {
+        // Ignore our own captions echoed back, and empty finals.
+        guard speakerID != localUser.id, !text.isEmpty else { return }
+        appendTurn(speakerID: speakerID, speakerName: speakerName, text: text)
+        // Star topology: the host relays guest captions to the OTHER guests so
+        // everyone sees them (guests only have a direct line to the host).
+        if isHost {
+            networkManager.broadcastMessage(.caption(speakerID: speakerID, speakerName: speakerName, text: text, isFinal: isFinal))
+        }
+    }
+
+    /// Append a finalized turn as a new bubble (each turn / each new speaker = a new
+    /// bubble). The list is capped at `maxCaptions`.
+    private func appendTurn(speakerID: UUID, speakerName: String, text: String) {
+        captions.append(CaptionMessage(speakerID: speakerID, speakerName: speakerName, text: text, date: Date()))
+        activeSpeakerID = speakerID
+        enforceCaptionCap()
+    }
+
+    /// Send a caption to the room (host → all guests; guest → host, which relays).
+    private func sendCaption(speakerID: UUID, speakerName: String, text: String, isFinal: Bool) {
+        let msg = NetworkMessage.caption(speakerID: speakerID, speakerName: speakerName, text: text, isFinal: isFinal)
+        if isHost {
+            networkManager.broadcastMessage(msg)
+        } else {
+            networkManager.sendToHost(msg)
+        }
+    }
+
+    /// Cheap cap: keeps only the newest `maxCaptions` bubbles.
+    private func enforceCaptionCap() {
+        guard captions.count > maxCaptions else { return }
+        captions.removeFirst(captions.count - maxCaptions)
     }
     
     /// Start the voice calibration process.
@@ -213,6 +284,9 @@ class MeetingViewModel {
             
         case .roomInfo(let updatedRoom):
             self.room = updatedRoom
+
+        case .caption(let speakerID, let speakerName, let text, let isFinal):
+            handleRemoteCaption(speakerID: speakerID, speakerName: speakerName, text: text, isFinal: isFinal)
         }
     }
     

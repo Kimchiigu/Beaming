@@ -270,8 +270,11 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Beaming/Info.plist;
-				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "Beaming needs local network access to discover and connect to nearby rooms.";
-				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Beaming needs microphone access to detect when you're speaking.";
+				INFOPLIST_KEY_LSApplicationCategoryType = "";
+				INFOPLIST_KEY_NSCameraUsageDescription = "Beaming menggunakan kamera untuk memindai kode QR agar kamu bisa bergabung ke diskusi.";
+				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "Beaming menghubungkan perangkat di sekitar melalui jaringan lokal untuk menjalankan diskusi.";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Beaming menggunakan mikrofon untuk mendeteksi suaramu dan mengaktifkan lampu sebagai penanda pembicara.";
+				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "You can view a text transcription of your meeting in the app.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -305,8 +308,11 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Beaming/Info.plist;
-				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "Beaming needs local network access to discover and connect to nearby rooms.";
-				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Beaming needs microphone access to detect when you're speaking.";
+				INFOPLIST_KEY_LSApplicationCategoryType = "";
+				INFOPLIST_KEY_NSCameraUsageDescription = "Beaming menggunakan kamera untuk memindai kode QR agar kamu bisa bergabung ke diskusi.";
+				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "Beaming menghubungkan perangkat di sekitar melalui jaringan lokal untuk menjalankan diskusi.";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Beaming menggunakan mikrofon untuk mendeteksi suaramu dan mengaktifkan lampu sebagai penanda pembicara.";
+				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "You can view a text transcription of your meeting in the app.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
