@@ -175,8 +175,17 @@ class AudioManager {
     // MARK: - Audio Engine
     
     private func startAudioEngine() {
-        // Don't start if already running
-        guard audioEngine == nil else { return }
+        // If already running, do nothing. If stopped, restart it.
+        if let engine = audioEngine {
+            if engine.isRunning { return }
+            do {
+                try engine.start()
+                print("[AudioManager] Audio engine restarted")
+            } catch {
+                print("[AudioManager] Failed to restart audio engine: \(error)")
+            }
+            return
+        }
         
         // IMPORTANT: Configure audio session FIRST — inputNode.outputFormat
         // returns an invalid format if the session isn't active yet, which
@@ -215,6 +224,14 @@ class AudioManager {
     
     func startListening() {
         guard !isMuted else { return }
+        
+        // Reactivate session just in case it was suspended by the OS
+        do {
+            try AVAudioSession.sharedInstance().setActive(true)
+        } catch {
+            print("[AudioManager] Could not reactivate audio session: \(error)")
+        }
+        
         startAudioEngine()
         print("[AudioManager] Started listening (threshold: \(audioThreshold))")
     }

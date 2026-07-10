@@ -61,7 +61,7 @@ struct AppClipJoinView: View {
                             .frame(width: 280, height: 280)
                             .blur(radius: 8)
 
-                        Image("MascotHome")
+                        Image("MascotMeeting")
                             .resizable()
                             .scaledToFit()
                             .frame(height: 180)
@@ -121,6 +121,7 @@ struct AppClipJoinView: View {
         .sheet(isPresented: $showPermission) {
             PermissionSheet(
                 onAllow: {
+                    UserDefaults.standard.set(true, forKey: "hasShownPermission")
                     showPermission = false
                     viewModel?.permissionGranted()
                 },
@@ -146,7 +147,11 @@ struct AppClipJoinView: View {
                     vm.handleInvocationURL(url)
                     // Show permission only if the URL was valid
                     if vm.hasValidRoom {
-                        showPermission = true
+                        if UserDefaults.standard.bool(forKey: "hasShownPermission") {
+                            vm.permissionGranted()
+                        } else {
+                            showPermission = true
+                        }
                     }
                 }
             }
@@ -161,7 +166,11 @@ struct AppClipJoinView: View {
                viewModel?.activeMeetingVM == nil,
                !navigateToMeeting,
                !showPermission {
-                showPermission = true
+                if UserDefaults.standard.bool(forKey: "hasShownPermission") {
+                    viewModel?.permissionGranted()
+                } else {
+                    showPermission = true
+                }
             }
         }
         // MARK: - Foreground re-activation
@@ -171,7 +180,11 @@ struct AppClipJoinView: View {
                 if viewModel?.activeMeetingVM == nil && !navigateToMeeting {
                     viewModel?.handleInvocationURL(url)
                     if viewModel?.hasValidRoom == true && !showPermission {
-                        showPermission = true
+                        if UserDefaults.standard.bool(forKey: "hasShownPermission") {
+                            viewModel?.permissionGranted()
+                        } else {
+                            showPermission = true
+                        }
                     }
                 }
             }

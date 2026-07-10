@@ -52,7 +52,9 @@ struct MeetingView: View {
         .onChange(of: viewModel.showCalibration) { _, stillCalibrating in
             if !stillCalibrating {
                 // Always-on captions start the moment calibration finishes.
-                transcriber.startTranscribing()
+                if Bundle.main.bundleIdentifier?.contains("Clip") == false {
+                    transcriber.startTranscribing()
+                }
             }
             if !stillCalibrating && viewModel.isHost && !didAutoShowQR {
                 didAutoShowQR = true
@@ -75,7 +77,9 @@ struct MeetingView: View {
                 viewModel?.handleLocalCaption(text: text, isFinal: isFinal)
             }
             if !viewModel.showCalibration {
-                transcriber.startTranscribing()
+                if Bundle.main.bundleIdentifier?.contains("Clip") == false {
+                    transcriber.startTranscribing()
+                }
             }
         }
         .onDisappear {
@@ -208,7 +212,12 @@ struct MeetingView: View {
                 Spacer()
             }
 
-            if let err = transcriber.errorMessage {
+            if Bundle.main.bundleIdentifier?.contains("Clip") == true {
+                Text("Transkripsi langsung tidak tersedia di App Clip. Silakan unduh aplikasi Beaming versi penuh di App Store untuk menikmati fitur ini.")
+                    .font(.system(size: 13))
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            } else if let err = transcriber.errorMessage {
                 Text(err)
                     .font(.system(size: 12))
                     .foregroundStyle(Color(hex: 0xE0533D))

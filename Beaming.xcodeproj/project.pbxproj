@@ -67,6 +67,7 @@
 				ViewModel/FlashlightManager.swift,
 				ViewModel/MeetingViewModel.swift,
 				ViewModel/NetworkManager.swift,
+				ViewModel/SpeakerVerificationManager.swift,
 				ViewModel/VoiceTranscribeViewModel.swift,
 			);
 			target = 361A245E30008DB500045EF9 /* BeamingClip */;
