@@ -8,5 +8,9 @@
 	</array>
 	<key>NSSpeechRecognitionUsageDescription</key>
 	<string>Beaming mengubah ucapan menjadi teks di perangkat agar bisa ditampilkan sebagai transkripsi selama diskusi.</string>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>audio</string>
+	</array>
 </dict>
 </plist>

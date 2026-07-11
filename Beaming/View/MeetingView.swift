@@ -69,6 +69,13 @@ struct MeetingView: View {
             }
         }
         .onAppear {
+            // Keep the screen awake for the whole meeting. The torch is a camera
+            // resource and iOS kills it the moment the app backgrounds / the screen
+            // locks — the audio background mode keeps the MIC alive, but there is no
+            // background mode that lets the torch run on a locked phone. Disabling
+            // the idle timer prevents auto-lock, so the app stays foregrounded and
+            // the torch can still blink when someone speaks. (Restored on disappear.)
+            UIApplication.shared.isIdleTimerDisabled = true
             // Always-on captions: route the local engine's output into the shared
             // feed (which also broadcasts to the room) and start once calibrated.
             transcriber.onCaptionUpdate = { [weak viewModel] text, isFinal in
@@ -79,6 +86,7 @@ struct MeetingView: View {
             }
         }
         .onDisappear {
+            UIApplication.shared.isIdleTimerDisabled = false
             transcriber.stopTranscribing()
             viewModel.leaveRoom()
         }
