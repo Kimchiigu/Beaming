@@ -19,15 +19,15 @@ enum OnboardingRole: String, CaseIterable, Identifiable, Codable {
 
     var imageName: String {
         switch self {
-        case .temanTuli: return "role1"
-        case .temanDengar: return "role2"
+        case .temanTuli: return "TemanTuli"
+        case .temanDengar: return "TemanDengar"
         }
     }
 
     var description: String {
         switch self {
-        case .temanTuli: return "Mengetahui siapa yang berbicara & membaca transkrip"
-        case .temanDengar: return "Membantu teman tuli mengikuti obrolan"
+        case .temanTuli: return "Mengetahui siapa yang berbicara dan membaca transkrip."
+        case .temanDengar: return "Membantu teman tuli mengikuti obrolan dan paham percakapan."
         }
     }
 }
