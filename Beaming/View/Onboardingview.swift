@@ -14,7 +14,7 @@ struct OnboardingView: View {
     @State private var viewModel = OnboardingViewModel()
 
     /// Used for the profile form page, which has no OnboardingPage entry.
-    private let formAccentColor = Color(hex: "6C63A6")
+    private let formAccentColor = Color(hex: "715DD1")
 
     private var currentAccentColor: Color {
         if viewModel.currentPage < OnboardingPage.all.count {

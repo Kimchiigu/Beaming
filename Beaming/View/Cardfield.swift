@@ -13,7 +13,7 @@ struct CardField: View {
     let hasSelection: Bool
     let action: () -> Void
 
-    private let accentColor = Color(hex: "6C63A6")
+    private let accentColor = Color(hex: "715DD1")
 
     var body: some View {
         Button(action: action) {
@@ -24,17 +24,17 @@ struct CardField: View {
                     .resizable()
                     .scaledToFit()
                     .frame(width: 122, height: 122)
-                    .offset(x: 5, y: 12)
+                    .offset(x: 5, y: 15)
 
                 // Text
                 VStack(alignment: .leading, spacing: 6) {
                     Text(role.displayName)
                         .font(.system(size: 17, weight: .semibold))
-                        .foregroundStyle(.black)
+                        .foregroundStyle(isSelected ? .white : .black)
 
                     Text(role.description)
                         .font(.system(size: 15))
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(isSelected ? Color.white.opacity(0.9) : .secondary)
                         .multilineTextAlignment(.leading)
                         .fixedSize(horizontal: false, vertical: true)
                 }
@@ -44,16 +44,24 @@ struct CardField: View {
             }
             .frame(maxWidth: .infinity)
             .frame(height: 132)
-            .background(Color.white)
-            .clipShape(RoundedRectangle(cornerRadius: 20))
+            .background(
+                RoundedRectangle(cornerRadius: 20)
+                    .fill(isSelected ? accentColor : .white)
+            )
             .overlay(
                 RoundedRectangle(cornerRadius: 20)
                     .stroke(
-                        isSelected ? accentColor : Color.black.opacity(0.06),
+                        isSelected
+                            ? accentColor
+                            : Color.black.opacity(0.06),
                         lineWidth: isSelected ? 2 : 1
                     )
             )
-            .shadow(color: .black.opacity(0.05), radius: 10, y: 4)
+            .shadow(
+                color: .black.opacity(0.05),
+                radius: 10,
+                y: 4
+            )
             .grayscale(hasSelection && !isSelected ? 1 : 0)
             .opacity(hasSelection && !isSelected ? 0.7 : 1)
             .animation(.easeInOut(duration: 0.2), value: hasSelection)
