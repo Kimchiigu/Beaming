@@ -120,6 +120,7 @@ struct CalibView: View {
             } label: {
                 Image(systemName: "chevron.backward")
                     .font(.system(size: 17, weight: .semibold))
+                    .foregroundStyle(.black)
                     .frame(width: 44, height: 44)
                     .glassEffect(in: .circle)
             }

@@ -92,19 +92,19 @@ private struct PermissionRow: View {
         Button(action: action) {
             HStack(spacing: 15) {
                 Image(systemName: icon)
-                    .font(.system(size: 16, weight: .medium))
+                    .font(.system(size: 26, weight: .medium))
                     .foregroundStyle(BeamingPalette.purple)
-                    .frame(width: 36, height: 36)
+                    .frame(width: 44, height: 44)
                     .background(BeamingPalette.purple.opacity(0.12))
                     .clipShape(Circle())
 
                 VStack(alignment: .leading, spacing: 2) {
                     Text(title)
-                        .font(.system(size: 16, weight: .semibold))
+                        .font(.system(size: 18, weight: .semibold))
                         .tracking(-0.31)
                         .foregroundStyle(.black)
                     Text(description)
-                        .font(.system(size: 12))
+                        .font(.system(size: 14))
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
                 }

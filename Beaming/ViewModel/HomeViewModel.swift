@@ -109,11 +109,12 @@ class HomeViewModel {
     }
 
     /// Tap a permission row. If iOS hasn't decided yet, fire the real Apple prompt
-    /// and set the matching flag only if the user allows it. Once the user has
-    /// *denied*, Apple will never show the prompt again — so in that case we deep-link
-    /// to the app's Settings page (the only way to re-enable). `refreshPermissions()`
-    /// (called on scenePhase → active) re-reads the status when the user returns, so
-    /// the checkmark updates and the row stays usable.
+    /// and set the matching flag only if the user allows it. Otherwise (already
+    /// granted OR already denied) deep-link to Settings — iOS gives apps no in-app
+    /// way to revoke or re-prompt, so Settings is the only place to flip a permission
+    /// off (uncheck) or back on (re-check). `refreshPermissions()` (called on
+    /// scenePhase → active) re-reads the status when the user returns, so the
+    /// checkmark always reflects the real system state.
     func requestPermission(_ kind: PermissionKind) {
         switch kind {
         case .microphone:
@@ -122,7 +123,7 @@ class HomeViewModel {
                 AVAudioApplication.requestRecordPermission { granted in
                     DispatchQueue.main.async { self.micGranted = granted }
                 }
-            } else if status != .granted {
+            } else {
                 openAppSettings()
             }
         case .speech:
@@ -131,7 +132,7 @@ class HomeViewModel {
                 SFSpeechRecognizer.requestAuthorization { st in
                     DispatchQueue.main.async { self.speechGranted = (st == .authorized) }
                 }
-            } else if status != .authorized {
+            } else {
                 openAppSettings()
             }
         case .camera:
@@ -140,7 +141,7 @@ class HomeViewModel {
                 AVCaptureDevice.requestAccess(for: .video) { granted in
                     DispatchQueue.main.async { self.cameraGranted = granted }
                 }
-            } else if status != .authorized {
+            } else {
                 openAppSettings()
             }
         }

@@ -53,33 +53,39 @@ struct HomeView: View {
             Color.white.ignoresSafeArea()
 
             VStack(spacing: 0) {
-                HStack(spacing: 12) {
+                HStack {
                     Spacer()
 
-                    Button {
-                        viewModel.openPermissionSheet()
-                    } label: {
-                        Image(systemName: "gearshape")
-                            .font(.system(size: 26, weight: .semibold))
-                            .frame(width: 56, height: 56)
-                            .foregroundStyle(Color.black)
-                            .background(Color.white.opacity(0.2))
-                            .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-                            .glassEffect()
-                    }
-                    .accessibilityLabel("Pengaturan")
+                    // Settings + profile joined into one glass control (like the
+                    // participant/QR group in the meeting toolbar).
+                    HStack(spacing: 0) {
+                        Button {
+                            viewModel.openPermissionSheet()
+                        } label: {
+                            Image(systemName: "gearshape")
+                                .font(.system(size: 22, weight: .semibold))
+                                .foregroundStyle(.black)
+                                .frame(width: 48, height: 48)
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("Pengaturan")
 
-                    Button {
-                        showEditProfile = true
-                    } label: {
-                        Image(systemName: "person.fill")
-                            .font(.system(size: 26, weight: .semibold))
-                            .frame(width: 56, height: 56)
-                            .foregroundStyle(Color.black)
-                            .background(Color.white.opacity(0.2)) // Base layer for glass effect if needed
-                            .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-                            .glassEffect()
+                        Capsule()
+                            .fill(Color.black.opacity(0.12))
+                            .frame(width: 1, height: 24)
+
+                        Button {
+                            showEditProfile = true
+                        } label: {
+                            Image(systemName: "person.fill")
+                                .font(.system(size: 22, weight: .semibold))
+                                .foregroundStyle(.black)
+                                .frame(width: 48, height: 48)
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("Profil")
                     }
+                    .glassEffect(in: RoundedRectangle(cornerRadius: 18, style: .continuous))
                 }
                 .padding(.horizontal, 24)
                 .padding(.vertical, 16)
@@ -219,8 +225,12 @@ private struct EditProfileSheet: View {
                             dismiss()
                         } label: {
                             Image(systemName: "checkmark")
-                                .foregroundStyle(.blue)
+                                .font(.system(size: 15, weight: .bold))
+                                .foregroundStyle(.white)
+                                .frame(width: 30, height: 30)
+                                .background(Color.blue, in: Circle())
                         }
+                        .buttonStyle(.plain)
                         .disabled(!viewModel.isFormValid)
                     }
                 }
