@@ -14,40 +14,48 @@ struct OnboardingFormView: View {
     @FocusState private var isUsernameFocused: Bool
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 28) {
-                Text("Kenalan, yuk!")
-                    .font(.system(size: 32, weight: .bold))
-                    .padding(.top, 12)
+        VStack(alignment: .leading, spacing: 28) {
 
-                TextField("Nama", text: $viewModel.username)
-                    .focused($isUsernameFocused)
-                    .textInputAutocapitalization(.words)
-                    .autocorrectionDisabled()
-                    .padding(.horizontal, 20)
-                    .padding(.vertical, 16)
-                    .background(
-                        Capsule()
-                            .fill(Color.white)
-                            .overlay(Capsule().stroke(Color.black.opacity(0.08)))
-                    )
+            Text("Kenalan, yuk!")
+                .font(.system(size: 32, weight: .bold))
+                .padding(.top, 12)
 
-                VStack(alignment: .leading, spacing: 16) {
-                    Text("Pilih peranmu")
-                        .font(.system(size: 17, weight: .semibold))
-
-                    ForEach(OnboardingRole.allCases) { role in
-                        CardField(
-                            role: role,
-                            isSelected: viewModel.selectedRole == role,
-                            action: { viewModel.select(role: role) }
+            TextField("Nama", text: $viewModel.username)
+                .focused($isUsernameFocused)
+                .textInputAutocapitalization(.words)
+                .autocorrectionDisabled()
+                .padding(.horizontal, 20)
+                .padding(.vertical, 16)
+                .background(
+                    Capsule()
+                        .fill(Color.white)
+                        .overlay(
+                            Capsule()
+                                .stroke(Color.black.opacity(0.08))
                         )
-                    }
+                )
+
+            VStack(alignment: .leading, spacing: 16) {
+                Text("Pilih peranmu")
+                    .font(.system(size: 17, weight: .semibold))
+
+                ForEach(OnboardingRole.allCases) { role in
+                    CardField(
+                        role: role,
+                        isSelected: viewModel.selectedRole == role,
+                        hasSelection: viewModel.selectedRole != nil,
+                        action: {
+                            viewModel.select(role: role)
+                        }
+                    )
                 }
             }
-            .padding(.horizontal, 24)
-            .padding(.bottom, 24)
+
+            Spacer()
         }
+        .padding(.horizontal, 24)
+        .padding(.top, 12)
+        .padding(.bottom, 24)
         .background(Color(.systemBackground).ignoresSafeArea())
     }
 }
