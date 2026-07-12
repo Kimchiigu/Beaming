@@ -11,6 +11,7 @@ import SwiftUI
 struct HomeView: View {
     @Environment(AppState.self) private var appState
     @State private var viewModel: HomeViewModel?
+    @State private var showEditProfile = false
 
     var body: some View {
         Group {
@@ -39,7 +40,7 @@ struct HomeView: View {
                     Spacer()
                     
                     Button {
-//                        showEditProfile = true
+                        showEditProfile = true
                     } label: {
                         Image(systemName: "person.fill")
                             .font(.system(size: 26, weight: .semibold))
@@ -95,6 +96,7 @@ struct HomeView: View {
                 .padding(.horizontal, 24)
                 .padding(.bottom, 48)
             }
+            .frame(maxHeight: .infinity, alignment: .top)
 
             if viewModel.isConnecting {
                 Color.black.opacity(0.25).ignoresSafeArea()
@@ -122,6 +124,9 @@ struct HomeView: View {
                 onClose: { viewModel.showQRScanner = false }
             )
         }
+        .sheet(isPresented: $showEditProfile) {
+            EditProfileSheet(appState: appState)
+        }
         .navigationDestination(isPresented: Binding(
             get: { viewModel.navigateToMeeting },
             set: { viewModel.navigateToMeeting = $0 }
@@ -138,6 +143,52 @@ struct HomeView: View {
             Button("OK", role: .cancel) { }
         } message: {
             Text(viewModel.alertMessage)
+        }
+    }
+}
+
+// MARK: - Edit profile sheet
+
+/// Reuses `OnboardingFormView` verbatim (exact same form design as onboarding),
+/// pre-filled with the current profile. Presents a standard sheet toolbar:
+/// centered "Ubah Profil" title, close on the left, checkmark save on the right.
+private struct EditProfileSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    @State private var viewModel: OnboardingViewModel
+    private let appState: AppState
+
+    init(appState: AppState) {
+        self.appState = appState
+        // Pre-fill with the existing profile so the user edits, not re-enters.
+        let vm = OnboardingViewModel()
+        vm.username = appState.profileUsername ?? ""
+        vm.selectedRole = appState.profileRole
+        _viewModel = State(initialValue: vm)
+    }
+
+    var body: some View {
+        NavigationStack {
+            OnboardingFormView(viewModel: viewModel, showsTitle: false)
+                .navigationTitle("Ubah Profil")
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .topBarLeading) {
+                        Button {
+                            dismiss()
+                        } label: {
+                            Image(systemName: "xmark")
+                        }
+                    }
+                    ToolbarItem(placement: .topBarTrailing) {
+                        Button {
+                            viewModel.completeOnboarding(appState: appState)
+                            dismiss()
+                        } label: {
+                            Image(systemName: "checkmark")
+                        }
+                        .disabled(!viewModel.isFormValid)
+                    }
+                }
         }
     }
 }
