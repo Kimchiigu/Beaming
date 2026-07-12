@@ -33,35 +33,26 @@ struct HomeView: View {
     private func homeContent(viewModel: HomeViewModel) -> some View {
         ZStack {
             Color.white.ignoresSafeArea()
-
-            BlobShape()
-                .fill(BeamingPalette.blob)
-                .frame(width: 360, height: 360)
-                .blur(radius: 50)
-                .opacity(0.45)
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
-                .offset(x: 140, y: -150)
-
-            BlobShape()
-                .fill(BeamingPalette.blob)
-                .frame(width: 360, height: 360)
-                .blur(radius: 50)
-                .opacity(0.35)
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading)
-                .offset(x: -150, y: 180)
-
-            // Big hero mascot behind the content, top-right (~3/4 screen height)
-            GeometryReader { geo in
-                Image("MascotHome")
-                    .resizable()
-                    .scaledToFit()
-                    .frame(height: geo.size.height * 0.75)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
-                    .offset(x: 28, y: -18)
-                    .accessibilityHidden(true)
-            }
-
+            
             VStack(spacing: 0) {
+                HStack {
+                    Spacer()
+                    
+                    Button {
+//                        showEditProfile = true
+                    } label: {
+                        Image(systemName: "person.fill")
+                            .font(.system(size: 26, weight: .semibold))
+                            .frame(width: 56, height: 56)
+                            .foregroundStyle(Color.black)
+                            .background(Color.white.opacity(0.2)) // Base layer for glass effect if needed
+                            .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                            .glassEffect()
+                    }
+                }
+                .padding(.horizontal, 24)
+                .padding(.vertical, 16)
+                
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Selamat Datang di")
                         .font(.system(size: 34, weight: .bold))
@@ -70,7 +61,6 @@ struct HomeView: View {
                     Text("Beaming!")
                         .font(.system(size: 34, weight: .bold))
                         .tracking(0.4)
-                        .foregroundStyle(BeamingPalette.wordmark)
                     Text("Siap untuk diskusi selanjutnya?")
                         .font(.system(size: 17))
                         .tracking(-0.43)
@@ -79,16 +69,15 @@ struct HomeView: View {
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.horizontal, 26)
-                .padding(.top, 64)
-
-                Spacer(minLength: 24)
+                .padding(.bottom, 24)
 
                 VStack(spacing: 16) {
                     HomeActionCard(
-                        symbol: "plus",
+                        symbol: "plus.circle.fill",
                         title: "Mulai diskusi",
-                        accent: BeamingPalette.green,
-                        chipBg: BeamingPalette.secondary
+                        description: "Buat ruang baru dan bagikan QR ke temanmu.",
+                        accent: Color.white,
+                        chipBg: BeamingPalette.purple
                     ) {
                         viewModel.didTapCreate()
                     }
@@ -96,8 +85,9 @@ struct HomeView: View {
                     HomeActionCard(
                         symbol: "qrcode.viewfinder",
                         title: "Scan QR untuk bergabung",
-                        accent: BeamingPalette.green,
-                        chipBg: BeamingPalette.secondary
+                        description: "Pindai QR untuk masuk ke ruang diskusi.",
+                        accent: Color.white,
+                        chipBg: BeamingPalette.purple
                     ) {
                         viewModel.didTapJoin()
                     }
@@ -157,26 +147,30 @@ struct HomeView: View {
 private struct HomeActionCard: View {
     let symbol: String
     let title: String
+    let description: String
     let accent: Color
     let chipBg: Color
     let action: () -> Void
 
     var body: some View {
         Button(action: action) {
-            VStack(spacing: 14) {
+            HStack(alignment: .top, spacing: 14) {
                 Image(systemName: symbol)
                     .font(.system(size: 26, weight: .semibold))
-                    .foregroundStyle(accent)
                     .frame(width: 56, height: 56)
+                    .foregroundStyle(Color.white)
                     .background(chipBg)
                     .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-                Text(title)
-                    .font(.system(size: 17, weight: .semibold))
-                    .tracking(-0.43)
-                    .foregroundStyle(accent)
+                VStack(alignment: .leading) {
+                    Text(title)
+                        .font(.system(size: 18, weight: .semibold))
+                        .padding(.bottom, 2)
+                    Text(description)
+                        .font(.system(size: 14, weight: .regular))
+                }
             }
             .frame(maxWidth: .infinity)
-            .frame(height: 156)
+            .padding(28)
             .beamingCard()
         }
         .buttonStyle(.plain)

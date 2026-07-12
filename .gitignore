@@ -65,3 +65,6 @@ fastlane/test_output
 .DS_Store
 **/.DS_Store
 start_claude.sh
+build
+references
+backgrounds

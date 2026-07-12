@@ -7,21 +7,27 @@
 
 import SwiftUI
 
-/// The active discussion ("Mode Diskusi"). Interface is identical for host and
-/// guest. The host's join-QR auto-opens at half height once calibration ends.
+/// The active discussion ("Mode Diskusi"). Content is role-based:
+///  [NOTES] — a deaf ("Teman Tuli") participant gets an app bar with two tabs:
+///  Transcript (`Meeting+TranscriptView`) and Tutorial (`Meeting+TutorialView`).
+///  A hearing ("Teman Dengar") participant gets only `Meeting+HearView` (no app bar).
 struct MeetingView: View {
     @Environment(AppState.self) private var appState
     @Environment(\.dismiss) private var dismiss
     @State var viewModel: MeetingViewModel
     @State private var showHostQR = false
     @State private var didAutoShowQR = false
+    @State private var showParticipants = false
+    @State private var selectedTab: MeetingTab = .transcript
     @State private var transcriber = VoiceTranscribeViewModel()
-    @State private var lastScrollAt: Date = .distantPast
+
+    private var isTuli: Bool { appState.profileRole == .temanTuli }
 
     var body: some View {
         ZStack {
-            discussionContent
+            meetingContent
 
+            // Calibration runs first; when it ends, audio + transcription start.
             if viewModel.showCalibration {
                 CalibrationView(viewModel: viewModel)
                     .transition(.opacity)
@@ -31,18 +37,34 @@ struct MeetingView: View {
                 FaceDownView()
                     .transition(.opacity)
             }
+
+            if showParticipants && !viewModel.showCalibration && !viewModel.isFaceDown {
+                participantsDropdown
+            }
         }
-        .navigationTitle("Mode Diskusi")
         .navigationBarTitleDisplayMode(.inline)
         .navigationBarBackButtonHidden(true)
         // Hide the nav bar while calibrating or face-down so overlays cover fully.
         .toolbar((viewModel.isFaceDown || viewModel.showCalibration) ? .hidden : .visible,
                  for: .navigationBar)
         .toolbar {
-            // Back = leave meeting (exit door, glass — matches other toolbars)
+            // [NOTES] — left: leave; center: "Mode Diskusi"; right: participants + QR.
             ToolbarItem(placement: .topBarLeading) {
-                GlassIconButton(systemName: "rectangle.portrait.and.arrow.right", tint: .red) {
+                toolbarIcon("rectangle.portrait.and.arrow.right", tint: .red) {
                     viewModel.leaveRoom()
+                }
+            }
+            ToolbarItem(placement: .principal) {
+                Text("Mode Diskusi")
+                    .font(.system(size: 17, weight: .semibold))
+                    .foregroundStyle(.primary)
+            }
+            ToolbarItemGroup(placement: .topBarTrailing) {
+                toolbarIcon("person.2.fill") {
+                    withAnimation(.easeOut(duration: 0.15)) { showParticipants.toggle() }
+                }
+                toolbarIcon("qrcode.viewfinder") {
+                    showHostQR = true
                 }
             }
         }
@@ -59,9 +81,12 @@ struct MeetingView: View {
                 showHostQR = true
             }
         }
-        // Close the QR sheet if the phone is placed face-down.
+        // Close the QR sheet / participants dropdown if the phone is placed face-down.
         .onChange(of: viewModel.isFaceDown) { _, faceDown in
-            if faceDown { showHostQR = false }
+            if faceDown {
+                showHostQR = false
+                showParticipants = false
+            }
         }
         .sheet(isPresented: $showHostQR) {
             QRShareSheet(code: viewModel.qrCodeString) {
@@ -102,213 +127,71 @@ struct MeetingView: View {
         }
     }
 
-    // MARK: - Discussion content (identical for host & guest)
+    // MARK: - Role-based content
 
-    private var discussionContent: some View {
-        ZStack {
-            Color.white.ignoresSafeArea()
-
-            BlobShape()
-                .fill(BeamingPalette.blob)
-                .frame(width: 360, height: 360)
-                .blur(radius: 50)
-                .opacity(0.35)
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
-                .offset(x: 150, y: -170)
-            BlobShape()
-                .fill(BeamingPalette.blob)
-                .frame(width: 360, height: 360)
-                .blur(radius: 50)
-                .opacity(0.3)
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading)
-                .offset(x: -150, y: 200)
-
-            VStack(spacing: 0) {
-                HStack(spacing: 8) {
-                    Image(systemName: "person.2.fill")
-                        .font(.system(size: 15))
-                    Text("\(viewModel.room.participantCount) orang di dalam diskusi")
-                        .font(.system(size: 16))
-                        .tracking(-0.43)
-                }
-                .foregroundStyle(Color(hex: 0x75777A))
-                .padding(.horizontal, 18)
-                .padding(.vertical, 10)
-                .background(Color.white)
-                .clipShape(Capsule())
-                .shadow(color: .black.opacity(0.08), radius: 8, y: 2)
-                .padding(.top, 12)
-
-                Spacer(minLength: 0)
-
-                // Mascot + instruction grouped together (text near the picture)
-                VStack(spacing: 16) {
-                    ZStack {
-                        Circle()
-                            .fill(RadialGradient(
-                                colors: [BeamingPalette.yellow.opacity(0.5), .clear],
-                                center: .center,
-                                startRadius: 0,
-                                endRadius: 160
-                            ))
-                            .frame(width: 300, height: 300)
-                            .blur(radius: 6)
-
-                        Image("MascotMeeting")
-                            .resizable()
-                            .scaledToFit()
-                            .frame(height: 220)
-                            .accessibilityHidden(true)
-                    }
-
-                    VStack(spacing: 6) {
-                        Text("Letakkan HP di atas meja dengan layar menghadap ke bawah!")
-                            .font(.system(size: 17, weight: .semibold))
-                            .tracking(-0.43)
-                            .multilineTextAlignment(.center)
-                            .foregroundStyle(.black)
-                        Text("Lampu akan menyala untuk menunjukkan siapa yang sedang berbicara.")
-                            .font(.system(size: 15))
-                            .tracking(-0.2)
-                            .multilineTextAlignment(.center)
-                            .foregroundStyle(.secondary)
-                    }
-                    .padding(.horizontal, 44)
-                }
-
-                Spacer(minLength: 16)
-
-                transcriptionCard
-
-                // Standalone QR pill button
-                Button {
-                    showHostQR = true
-                } label: {
-                    HStack(spacing: 8) {
-                        Image(systemName: "qrcode.viewfinder")
-                        Text("Tunjukkan Kode QR")
-                    }
-                }
-                .buttonStyle(PrimaryButtonStyle())
-                .padding(.horizontal, 24)
-                .padding(.bottom, 36)
-            }
+    @ViewBuilder
+    private var meetingContent: some View {
+        if isTuli {
+            tuliContent
+        } else {
+            Meeting_HearView()
         }
     }
 
-    // MARK: - Live transcription
-
-    /// Caption card: always-on chat-style transcript merged from all speakers.
-    private var transcriptionCard: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack(spacing: 6) {
-                Image(systemName: transcriber.isTranscribing ? "waveform" : "captions.bubble")
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(BeamingPalette.green)
-                Text("Transkripsi Langsung")
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(BeamingPalette.green)
-                if transcriber.isTranscribing {
-                    Text("● langsung")
-                        .font(.system(size: 11, weight: .semibold))
-                        .foregroundStyle(BeamingPalette.green)
+    /// Deaf role: Transcript / Tutorial via Apple's standard tab bar.
+    private var tuliContent: some View {
+        TabView(selection: $selectedTab) {
+            Meeting_TranscriptView(viewModel: viewModel, transcriber: transcriber)
+                .tabItem {
+                    Label("Transkrip", systemImage: "captions.bubble.fill")
                 }
+                .tag(MeetingTab.transcript)
+
+            Meeting_TutorialView()
+                .tabItem {
+                    Label("Tutorial", systemImage: "lightbulb.fill")
+                }
+                .tag(MeetingTab.tutorial)
+        }
+    }
+
+    // MARK: - Toolbar icon (plain — no glass circle)
+
+    private func toolbarIcon(_ systemName: String, tint: Color = .primary,
+                             action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Image(systemName: systemName)
+                .foregroundStyle(tint)
+        }
+    }
+
+    // MARK: - Participants dropdown
+
+    private var participantsDropdown: some View {
+        VStack {
+            HStack {
                 Spacer()
+                DropdownMenuList(names: viewModel.room.participants.map { $0.name })
+                    .padding(.trailing, 16)
+                    .padding(.top, 6)
             }
-
-            if let err = transcriber.errorMessage {
-                Text(err)
-                    .font(.system(size: 12))
-                    .foregroundStyle(Color(hex: 0xE0533D))
-                    .frame(maxWidth: .infinity, alignment: .leading)
-            } else if viewModel.captions.isEmpty {
-                Text(transcriber.isTranscribing ? "Mendengarkan…" : "Memulai transkripsi…")
-                    .font(.system(size: 15))
-                    .foregroundStyle(.secondary)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .frame(minHeight: 44)
-            } else {
-                chatScroll
-            }
+            Spacer()
         }
-        .padding(16)
-        .beamingCard()
-        .padding(.horizontal, 24)
-    }
-
-    /// Scrollable, auto-following chat of turn bubbles (one per speaker turn, max 5).
-    /// Each row is an Equatable view, so when a new bubble arrives only the NEW row
-    /// renders — historical rows are reused as-is (no re-render, no lag).
-    private var chatScroll: some View {
-        ScrollViewReader { proxy in
-            ScrollView {
-                LazyVStack(alignment: .leading, spacing: 10) {
-                    ForEach(viewModel.captions) { msg in
-                        CaptionBubbleView(msg: msg, isOwn: msg.speakerID == viewModel.localUser.id)
-                            .equatable()
-                            .id(msg.id.uuidString)
-                    }
-                    if viewModel.isLocalSpeaking {
-                        CaptionBubbleView(
-                            msg: CaptionMessage(
-                                speakerID: viewModel.localUser.id,
-                                speakerName: viewModel.localUser.name,
-                                text: "",
-                                date: Date()
-                            ),
-                            isOwn: true
-                        )
-                        .id("local-placeholder")
-                    }
-                    Color.clear.frame(height: 1).id("bottom")
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        .background(
+            Color.clear
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    withAnimation(.easeOut(duration: 0.15)) { showParticipants = false }
                 }
-                .padding(.vertical, 2)
-            }
-            .frame(height: 190)
-            .onChange(of: viewModel.captions.count) { _, _ in follow(proxy) }
-            .onChange(of: viewModel.isLocalSpeaking) { _, _ in follow(proxy) }
-            .onAppear { follow(proxy) }
-        }
-    }
-
-    /// Throttled, non-animated auto-scroll.
-    private func follow(_ proxy: ScrollViewProxy) {
-        let now = Date()
-        guard now.timeIntervalSince(lastScrollAt) >= 0.2 else { return }
-        lastScrollAt = now
-        proxy.scrollTo("bottom", anchor: .bottom)
+        )
+        .transition(.opacity)
+        .zIndex(10)
     }
 }
 
-/// One chat bubble. Equatable so SwiftUI can skip re-rendering it when its inputs
-/// are unchanged — this is what keeps history from re-rendering on every new message.
-private struct CaptionBubbleView: View, Equatable {
-    let msg: CaptionMessage
-    let isOwn: Bool
-
-    static func == (lhs: CaptionBubbleView, rhs: CaptionBubbleView) -> Bool {
-        lhs.isOwn == rhs.isOwn && lhs.msg == rhs.msg
-    }
-
-    var body: some View {
-        // Empty text = the local "speaking" placeholder while a turn is in progress.
-        let display = msg.text.isEmpty ? "sedang bicara…" : msg.text
-        return VStack(alignment: isOwn ? .trailing : .leading, spacing: 3) {
-            Text(msg.speakerName)
-                .font(.system(size: 12, weight: .semibold))
-                .foregroundStyle(BeamingPalette.green)
-            Text(display)
-                .font(.system(size: 15))
-                .foregroundStyle(isOwn ? .white : .black)
-                .multilineTextAlignment(isOwn ? .trailing : .leading)
-                .padding(.horizontal, 12)
-                .padding(.vertical, 8)
-                .background(isOwn ? BeamingPalette.green : Color(hex: 0xF0F1F2))
-                .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-        }
-        .frame(maxWidth: 260, alignment: isOwn ? .trailing : .leading)
-        .frame(maxWidth: .infinity, alignment: isOwn ? .trailing : .leading)
-    }
+private enum MeetingTab: Hashable {
+    case transcript, tutorial
 }
 
 #Preview {
@@ -323,4 +206,3 @@ private struct CaptionBubbleView: View, Equatable {
         .environment(AppState())
     }
 }
-
