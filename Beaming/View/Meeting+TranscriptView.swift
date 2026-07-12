@@ -60,9 +60,9 @@ struct Meeting_TranscriptView: View {
     private func captionCard(_ msg: CaptionMessage, cardHeight: CGFloat) -> some View {
         VStack(alignment: .leading, spacing: 4) {
             Text(msg.speakerName)
-                .font(.system(size: 32, weight: .bold))
+                .font(.system(size: 40, weight: .bold))
             Text(msg.text)
-                .font(.system(size: 20))
+                .font(.system(size: 28))
         }
         .foregroundColor(.white)
         .padding(36)

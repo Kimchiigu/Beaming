@@ -21,6 +21,7 @@ struct Meeting_TutorialView: View {
             VStack {
                 Text("Lampu HP akan **menyala**\nketika orang berbicara")
                     .multilineTextAlignment(.center)
+                    .padding(.top, 64)
 
                 Spacer()
             }

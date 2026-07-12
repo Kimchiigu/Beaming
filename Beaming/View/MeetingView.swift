@@ -42,25 +42,28 @@ struct MeetingView: View {
                 participantsDropdown
             }
         }
-        .navigationTitle("Mode Diskusi")
         .navigationBarTitleDisplayMode(.inline)
         .navigationBarBackButtonHidden(true)
         // Hide the nav bar while calibrating or face-down so overlays cover fully.
         .toolbar((viewModel.isFaceDown || viewModel.showCalibration) ? .hidden : .visible,
                  for: .navigationBar)
         .toolbar {
-            // [NOTES] — left: leave; center: "Mode Diskusi" (navigationTitle);
-            // right: participants dropdown + QR.
+            // [NOTES] — left: leave; center: "Mode Diskusi"; right: participants + QR.
             ToolbarItem(placement: .topBarLeading) {
-                GlassIconButton(systemName: "rectangle.portrait.and.arrow.right", tint: .red) {
+                toolbarIcon("rectangle.portrait.and.arrow.right", tint: .red) {
                     viewModel.leaveRoom()
                 }
             }
+            ToolbarItem(placement: .principal) {
+                Text("Mode Diskusi")
+                    .font(.system(size: 17, weight: .semibold))
+                    .foregroundStyle(.primary)
+            }
             ToolbarItemGroup(placement: .topBarTrailing) {
-                GlassIconButton(systemName: "person.2.fill") {
+                toolbarIcon("person.2.fill") {
                     withAnimation(.easeOut(duration: 0.15)) { showParticipants.toggle() }
                 }
-                GlassIconButton(systemName: "qrcode.viewfinder") {
+                toolbarIcon("qrcode.viewfinder") {
                     showHostQR = true
                 }
             }
@@ -135,56 +138,31 @@ struct MeetingView: View {
         }
     }
 
-    /// Deaf role: a Transcript/Tutorial tab switched by a floating bottom app bar.
+    /// Deaf role: Transcript / Tutorial via Apple's standard tab bar.
     private var tuliContent: some View {
-        VStack(spacing: 0) {
-            Group {
-                switch selectedTab {
-                case .transcript:
-                    Meeting_TranscriptView(viewModel: viewModel, transcriber: transcriber)
-                case .tutorial:
-                    Meeting_TutorialView()
+        TabView(selection: $selectedTab) {
+            Meeting_TranscriptView(viewModel: viewModel, transcriber: transcriber)
+                .tabItem {
+                    Label("Transkrip", systemImage: "captions.bubble.fill")
                 }
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .tag(MeetingTab.transcript)
 
-            bottomTabBar
-                .padding(.horizontal, 24)
-                .padding(.bottom, 16)
+            Meeting_TutorialView()
+                .tabItem {
+                    Label("Tutorial", systemImage: "lightbulb.fill")
+                }
+                .tag(MeetingTab.tutorial)
         }
     }
 
-    private var bottomTabBar: some View {
-        HStack(spacing: 6) {
-            tabButton(.transcript, title: "Transkrip", icon: "captions.bubble.fill")
-            tabButton(.tutorial, title: "Tutorial", icon: "lightbulb.fill")
-        }
-        .padding(6)
-        .background(.ultraThinMaterial)
-        .clipShape(Capsule())
-        .shadow(color: .black.opacity(0.1), radius: 10, y: 4)
-    }
+    // MARK: - Toolbar icon (plain — no glass circle)
 
-    private func tabButton(_ tab: MeetingTab, title: String, icon: String) -> some View {
-        Button {
-            withAnimation(.easeInOut(duration: 0.2)) { selectedTab = tab }
-        } label: {
-            HStack(spacing: 8) {
-                Image(systemName: icon)
-                    .font(.system(size: 15, weight: .semibold))
-                Text(title)
-                    .font(.system(size: 15, weight: .semibold))
-            }
-            .foregroundStyle(selectedTab == tab ? .white : BeamingPalette.purple)
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 12)
-            .background {
-                if selectedTab == tab {
-                    Capsule().fill(BeamingPalette.purple)
-                }
-            }
+    private func toolbarIcon(_ systemName: String, tint: Color = .primary,
+                             action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Image(systemName: systemName)
+                .foregroundStyle(tint)
         }
-        .buttonStyle(.plain)
     }
 
     // MARK: - Participants dropdown
@@ -212,7 +190,7 @@ struct MeetingView: View {
     }
 }
 
-private enum MeetingTab {
+private enum MeetingTab: Hashable {
     case transcript, tutorial
 }
 
