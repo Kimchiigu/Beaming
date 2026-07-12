@@ -22,6 +22,7 @@ extension Color {
 /// Brand palette extracted from the Figma hi-fi.
 enum BeamingPalette {
     static let green = Color(hex: 0x2C755D)   // primary brand
+    static let purple = Color(hex: 0x715DD1)
     static let blue = Color(hex: 0x0093EC)    // create accent
     static let yellow = Color(hex: 0xFFCC00)  // gradient end
     static let pink = Color(hex: 0xFF7889)    // secondary
