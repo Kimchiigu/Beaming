@@ -11,14 +11,19 @@ import SwiftUI
 /// Purely presentational — all state and validation lives in `OnboardingViewModel`.
 struct OnboardingFormView: View {
     @Bindable var viewModel: OnboardingViewModel
+    /// Inline big title. Onboarding shows "Kenalan, yuk!"; the edit-profile sheet
+    /// hides it and uses a navigation toolbar title instead.
+    var showsTitle: Bool = true
     @FocusState private var isUsernameFocused: Bool
 
     var body: some View {
         VStack(alignment: .leading, spacing: 28) {
 
-            Text("Kenalan, yuk!")
-                .font(.system(size: 32, weight: .bold))
-                .padding(.top, 12)
+            if showsTitle {
+                Text("Kenalan, yuk!")
+                    .font(.system(size: 32, weight: .bold))
+                    .padding(.top, 12)
+            }
 
             TextField("Nama", text: $viewModel.username)
                 .focused($isUsernameFocused)
