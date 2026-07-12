@@ -55,36 +55,33 @@ struct QRShareSheet: View {
     let onClose: () -> Void
 
     var body: some View {
-        VStack(spacing: 18) {
-            Capsule()
-                .fill(Color.secondary.opacity(0.3))
-                .frame(width: 36, height: 5)
-                .padding(.top, 8)
+        NavigationStack {
+            VStack(spacing: 18) {
+                Text("Tunjukkan kode QR ke temanmu untuk ikuti diskusi")
+                    .font(.system(size: 15))
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 44)
+                    .padding(.top, 8)
 
-            ZStack {
-                Text("Kode QR")
-                    .font(.system(size: 17, weight: .semibold))
-                    .tracking(-0.43)
-                HStack {
-                    GlassIconButton(systemName: "xmark", action: onClose)
-                    Spacer()
+                QRCodeView(string: code, side: 200)
+
+                Spacer(minLength: 0)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .foregroundStyle(.black)
+            .background(Color.white)
+            .navigationTitle("Kode QR")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button(action: onClose) {
+                        Image(systemName: "xmark")
+                    }
+                    .buttonStyle(.plain)
                 }
             }
-            .padding(.horizontal, 16)
-
-            Text("Tunjukkan kode QR ke temanmu untuk ikuti diskusi")
-                .font(.system(size: 15))
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
-                .padding(.horizontal, 44)
-
-            QRCodeView(string: code, side: 200)
-
-            Spacer(minLength: 0)
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .foregroundStyle(.black)
-        .background(Color.white)
         .presentationDetents([.medium, .large])
     }
 }

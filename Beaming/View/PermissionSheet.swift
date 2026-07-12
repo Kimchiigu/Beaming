@@ -2,108 +2,134 @@
 //  PermissionSheet.swift
 //  Beaming
 //
-//  Bottom sheet asking for Microphone + Local Network access before a session.
+//  Unified permission sheet: Microphone, Speech Recognition, Camera.
+//  Each row is tappable — tapping fires the real Apple prompt (or, if the user has
+//  already denied it, opens Settings so they can re-enable), and the checkmark fills
+//  only once the permission is actually granted. Uses standard Apple sheet chrome
+//  (nav bar title + toolbar close button), matching the edit-profile sheet.
 //
 
 import SwiftUI
 
 struct PermissionSheet: View {
+    let micGranted: Bool
+    let speechGranted: Bool
+    let cameraGranted: Bool
+    let onRequest: (PermissionKind) -> Void
     let onAllow: () -> Void
     let onClose: () -> Void
 
     var body: some View {
-        VStack(spacing: 20) {
-            Capsule()
-                .fill(Color.secondary.opacity(0.3))
-                .frame(width: 36, height: 5)
-                .padding(.top, 8)
+        NavigationStack {
+            VStack(spacing: 20) {
+                Text("Kami memerlukan beberapa izin untuk memulai pengalaman interaktif.")
+                    .font(.system(size: 16, weight: .semibold))
+                    .tracking(-0.31)
+                    .foregroundStyle(.black)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 22)
+                    .padding(.top, 4)
 
-            ZStack {
-                Text("Izin")
-                    .font(.system(size: 17, weight: .semibold))
-                    .tracking(-0.43)
-                HStack {
-                    GlassIconButton(systemName: "xmark", action: onClose)
-                    Spacer()
+                PermissionRow(
+                    icon: "microphone",
+                    title: "Mikrofon",
+                    description: "Mendeteksi suara saat Anda berbicara untuk menyalakan lampu.",
+                    granted: micGranted
+                ) { onRequest(.microphone) }
+
+                PermissionRow(
+                    icon: "waveform",
+                    title: "Pengenalan Suara",
+                    description: "Mengubah percakapan menjadi teks transkripsi langsung.",
+                    granted: speechGranted
+                ) { onRequest(.speech) }
+
+                PermissionRow(
+                    icon: "camera.fill",
+                    title: "Kamera",
+                    description: "Memindai kode QR host untuk bergabung ke ruang diskusi.",
+                    granted: cameraGranted
+                ) { onRequest(.camera) }
+
+                Spacer(minLength: 0)
+
+                Button {
+                    onAllow()
+                } label: {
+                    Text("Lanjutkan")
+                        .frame(maxWidth: .infinity)
+                        .foregroundStyle(.white)
+                }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.large)
+                .tint(BeamingPalette.purple)
+                .padding(.horizontal, 22)
+                .padding(.bottom, 28)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background(Color.white)
+            .navigationTitle("Izin")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button(action: onClose) {
+                        Image(systemName: "xmark")
+                    }
                 }
             }
-            .padding(.horizontal, 16)
-            .padding(.top, 4)
-
-            Text("Kami memerlukan beberapa izin untuk memulai pengalaman interaktif.")
-                .font(.system(size: 16, weight: .semibold))
-                .tracking(-0.31)
-                .foregroundStyle(.black)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.horizontal, 22)
-
-            PermissionRow(
-                icon: "microphone",
-                chipColor: BeamingPalette.micChip,
-                title: "Mikrofon",
-                description: "Mendeteksi ritme dan volume suara untuk menghasilkan pulsa \u{201C}beaming\u{201D} visual. Tidak ada audio yang pernah direkam atau disimpan."
-            )
-
-            PermissionRow(
-                icon: "flashlight.off.fill",
-                chipColor: BeamingPalette.netChip,
-                title: "Jaringan Lokal",
-                description: "Menggunakan senter atau kecerahan layar perangkat Anda untuk memberikan umpan balik visual selama diskusi aktif."
-            )
-
-            Spacer(minLength: 0)
-
-            Button("Izinkan Akses") {
-                onAllow()
-            }
-            .buttonStyle(PrimaryButtonStyle())
-            .padding(.horizontal, 22)
-            .padding(.bottom, 28)
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .foregroundStyle(.black)
-        .background(Color.white)
     }
 }
 
 private struct PermissionRow: View {
     let icon: String
-    let chipColor: Color
     let title: String
     let description: String
+    let granted: Bool
+    let action: () -> Void
 
     var body: some View {
-        HStack(spacing: 15) {
-            Image(systemName: icon)
-                .font(.system(size: 16, weight: .medium))
-                .foregroundStyle(.black)
-                .frame(width: 36, height: 36)
-                .background(chipColor)
-                .clipShape(Circle())
+        Button(action: action) {
+            HStack(spacing: 15) {
+                Image(systemName: icon)
+                    .font(.system(size: 16, weight: .medium))
+                    .foregroundStyle(BeamingPalette.purple)
+                    .frame(width: 36, height: 36)
+                    .background(BeamingPalette.purple.opacity(0.12))
+                    .clipShape(Circle())
 
-            VStack(alignment: .leading, spacing: 2) {
-                Text(title)
-                    .font(.system(size: 16, weight: .semibold))
-                    .tracking(-0.31)
-                    .foregroundStyle(.black)
-                Text(description)
-                    .font(.system(size: 12))
-                    .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(title)
+                        .font(.system(size: 16, weight: .semibold))
+                        .tracking(-0.31)
+                        .foregroundStyle(.black)
+                    Text(description)
+                        .font(.system(size: 12))
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+
+                Spacer(minLength: 0)
+
+                Image(systemName: granted ? "checkmark.circle.fill" : "circle")
+                    .font(.system(size: 22))
+                    .foregroundStyle(granted ? BeamingPalette.purple : Color.secondary.opacity(0.35))
             }
-
-            Spacer(minLength: 0)
-
-            Image(systemName: "checkmark.circle.fill")
-                .font(.system(size: 22))
-                .foregroundStyle(BeamingPalette.green)
+            .padding(15)
+            .beamingCard()
+            .padding(.horizontal, 22)
         }
-        .padding(15)
-        .beamingCard()
-        .padding(.horizontal, 22)
+        .buttonStyle(.plain)
     }
 }
 
 #Preview {
-    PermissionSheet(onAllow: {}, onClose: {})
+    PermissionSheet(
+        micGranted: true,
+        speechGranted: false,
+        cameraGranted: false,
+        onRequest: { _ in },
+        onAllow: {},
+        onClose: {}
+    )
 }

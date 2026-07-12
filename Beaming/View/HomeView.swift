@@ -10,6 +10,7 @@ import SwiftUI
 /// The Home screen: branded greeting + two action cards (Create / Join via QR).
 struct HomeView: View {
     @Environment(AppState.self) private var appState
+    @Environment(\.scenePhase) private var scenePhase
     @State private var viewModel: HomeViewModel?
     @State private var showEditProfile = false
 
@@ -24,9 +25,25 @@ struct HomeView: View {
         }
         .onAppear {
             if viewModel == nil {
-                viewModel = HomeViewModel(user: appState.currentUser)
+                // Use the profile name (entered during onboarding) over the stable id
+                // so the meeting room shows the real name, not the generated codename.
+                let name = appState.profileUsername ?? appState.currentUser.name
+                viewModel = HomeViewModel(user: User(name: name, id: appState.currentUser.id))
             }
             viewModel?.onAppear()
+        }
+        .onChange(of: appState.profileUsername) { _, newName in
+            // Keep the local user's name in sync if the profile is edited later.
+            if let newName, let viewModel {
+                viewModel.currentUser.name = newName
+            }
+        }
+        .onChange(of: scenePhase) { _, phase in
+            // Re-read permission status when returning to the app (e.g. after the
+            // user flipped a switch in Settings following a denial).
+            if phase == .active, let viewModel {
+                viewModel.refreshPermissions()
+            }
         }
     }
 
@@ -34,11 +51,24 @@ struct HomeView: View {
     private func homeContent(viewModel: HomeViewModel) -> some View {
         ZStack {
             Color.white.ignoresSafeArea()
-            
+
             VStack(spacing: 0) {
-                HStack {
+                HStack(spacing: 12) {
                     Spacer()
-                    
+
+                    Button {
+                        viewModel.openPermissionSheet()
+                    } label: {
+                        Image(systemName: "gearshape")
+                            .font(.system(size: 26, weight: .semibold))
+                            .frame(width: 56, height: 56)
+                            .foregroundStyle(Color.black)
+                            .background(Color.white.opacity(0.2))
+                            .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                            .glassEffect()
+                    }
+                    .accessibilityLabel("Pengaturan")
+
                     Button {
                         showEditProfile = true
                     } label: {
@@ -53,7 +83,7 @@ struct HomeView: View {
                 }
                 .padding(.horizontal, 24)
                 .padding(.vertical, 16)
-                
+
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Selamat Datang di")
                         .font(.system(size: 34, weight: .bold))
@@ -110,10 +140,14 @@ struct HomeView: View {
             set: { viewModel.showPermission = $0 }
         )) {
             PermissionSheet(
+                micGranted: viewModel.micGranted,
+                speechGranted: viewModel.speechGranted,
+                cameraGranted: viewModel.cameraGranted,
+                onRequest: { viewModel.requestPermission($0) },
                 onAllow: { viewModel.permissionAllowed() },
                 onClose: { viewModel.cancelFlow() }
             )
-            .presentationDetents([.fraction(0.72), .large])
+            .presentationDetents([.large])
         }
         .sheet(isPresented: Binding(
             get: { viewModel.showQRScanner },
@@ -185,6 +219,7 @@ private struct EditProfileSheet: View {
                             dismiss()
                         } label: {
                             Image(systemName: "checkmark")
+                                .foregroundStyle(.blue)
                         }
                         .disabled(!viewModel.isFormValid)
                     }
@@ -220,7 +255,7 @@ private struct HomeActionCard: View {
                         .font(.system(size: 14, weight: .regular))
                 }
             }
-            .frame(maxWidth: .infinity)
+            .frame(maxWidth: .infinity, alignment: .leading)
             .padding(28)
             .beamingCard()
         }

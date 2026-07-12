@@ -15,50 +15,49 @@ struct QRScannerView: View {
     @State private var cameraAuthorized: Bool? = nil
 
     var body: some View {
-        ZStack {
-            Color.black.ignoresSafeArea()
+        NavigationStack {
+            ZStack {
+                Color.black.ignoresSafeArea()
 
-            if cameraAuthorized == true {
-                QRScannerRepresentable(onScan: onScan)
-                    .ignoresSafeArea()
-            } else if cameraAuthorized == false {
-                VStack(spacing: 12) {
-                    Image(systemName: "camera.fill")
-                        .font(.system(size: 44))
-                        .foregroundStyle(.white.opacity(0.6))
-                    Text("Akses kamera diperlukan untuk memindai QR.")
-                        .font(.subheadline)
-                        .foregroundStyle(.white.opacity(0.8))
-                        .multilineTextAlignment(.center)
+                if cameraAuthorized == true {
+                    QRScannerRepresentable(onScan: onScan)
+                        .ignoresSafeArea()
+                } else if cameraAuthorized == false {
+                    VStack(spacing: 12) {
+                        Image(systemName: "camera.fill")
+                            .font(.system(size: 44))
+                            .foregroundStyle(.white.opacity(0.6))
+                        Text("Akses kamera diperlukan untuk memindai QR.")
+                            .font(.subheadline)
+                            .foregroundStyle(.white.opacity(0.8))
+                            .multilineTextAlignment(.center)
+                    }
+                    .padding()
                 }
-                .padding()
-            }
 
-            VStack {
-                ZStack {
-                    Text("Scan QR")
-                        .font(.system(size: 17, weight: .semibold))
+                VStack {
+                    Spacer()
+
+                    RoundedRectangle(cornerRadius: 24, style: .continuous)
+                        .stroke(Color.white.opacity(0.9), lineWidth: 4)
+                        .frame(width: 247, height: 247)
+
+                    Spacer()
+
+                    Text("Arahkan kamera ke kode QR host")
+                        .font(.system(size: 17))
                         .foregroundStyle(.white)
-                    HStack {
-                        GlassIconButton(systemName: "xmark", tint: .white, action: onClose)
-                        Spacer()
+                        .padding(.bottom, 40)
+                }
+            }
+            .navigationTitle("Scan QR")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button(action: onClose) {
+                        Image(systemName: "xmark")
                     }
                 }
-                .padding(.horizontal, 16)
-                .padding(.top, 8)
-
-                Spacer()
-
-                RoundedRectangle(cornerRadius: 24, style: .continuous)
-                    .stroke(Color.white.opacity(0.9), lineWidth: 4)
-                    .frame(width: 247, height: 247)
-
-                Spacer()
-
-                Text("Arahkan kamera ke kode QR host")
-                    .font(.system(size: 17))
-                    .foregroundStyle(.white)
-                    .padding(.bottom, 40)
             }
         }
         .onAppear { requestCameraAccess() }

@@ -29,7 +29,7 @@ struct MeetingView: View {
 
             // Calibration runs first; when it ends, audio + transcription start.
             if viewModel.showCalibration {
-                CalibrationView(viewModel: viewModel)
+                CalibView(viewModel: viewModel)
                     .transition(.opacity)
             }
 
@@ -153,6 +153,7 @@ struct MeetingView: View {
                 }
                 .tag(MeetingTab.tutorial)
         }
+        .tint(BeamingPalette.purple)
     }
 
     // MARK: - Toolbar icon (plain — no glass circle)
