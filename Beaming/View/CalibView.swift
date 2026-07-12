@@ -7,11 +7,28 @@
 
 import SwiftUI
 
+/// Voice calibration UI (new hi-fi). Pure presentation — all logic lives in the
+/// shared `MeetingViewModel` / `AudioManager` (start, progress, audio level, done),
+/// so the real 3.5-second calibration still drives this screen.
 struct CalibView: View {
 
-    @StateObject private var viewModel = CalibViewModel()
+    let viewModel: MeetingViewModel
 
     private let mainPurple = Color(red: 0x71 / 255, green: 0x5D / 255, blue: 0xD1 / 255)
+
+    /// Waveform + progress bar stay visible while recording OR after done.
+    private var isCalibrating: Bool {
+        viewModel.audioManager.isCalibrating || viewModel.isCalibrationDone
+    }
+
+    private var isDone: Bool { viewModel.isCalibrationDone }
+
+    /// Live waveform bars derived from the current mic level (same approach as the
+    /// previous calibration screen).
+    private var waveformHeights: [CGFloat] {
+        let level = max(0, min(1, CGFloat(viewModel.audioManager.audioLevel) * 18))
+        return CalibModel.initialWaveformHeights.map { max(8, $0 * (0.4 + level)) }
+    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -22,10 +39,10 @@ struct CalibView: View {
             // MARK: - Content
             VStack(spacing: 24) {
 
-                if viewModel.isCalibrating {
+                if isCalibrating {
                     // Waveform tetap tampil selama recording maupun setelah done
                     CalibWaveformView(
-                        heights: viewModel.waveformHeights,
+                        heights: waveformHeights,
                         mainColor: mainPurple
                     )
                     .padding(.top, 32)
@@ -43,7 +60,7 @@ struct CalibView: View {
                     .padding(.top, 32)
                 }
 
-                if viewModel.isDone {
+                if isDone {
                     // Kalibrasi berhasil
                     VStack(spacing: 8) {
                         Text(CalibModel.successTitle)
@@ -69,9 +86,9 @@ struct CalibView: View {
 
                 Spacer()
 
-                if viewModel.isCalibrating {
-                    // Progress Bar (menggantikan button, jalan sesuai CalibViewModel)
-                    ProgressBarView(progress: viewModel.progress, mainColor: mainPurple)
+                if isCalibrating {
+                    // Progress bar (real progress from AudioManager, 0...1)
+                    ProgressBarView(progress: CGFloat(viewModel.audioManager.calibrationProgress), mainColor: mainPurple)
                         .frame(height: 12)
                         .padding(.horizontal, 24)
                         .padding(.bottom, 24)
@@ -96,10 +113,24 @@ struct CalibView: View {
         }
         .edgesIgnoringSafeArea(.top)
         .background(Color.white)
+        .overlay(alignment: .topLeading) {
+            // Leave calibration → back to Home. Default-sized glass button (iOS 26).
+            Button {
+                viewModel.leaveRoom()
+            } label: {
+                Image(systemName: "chevron.backward")
+                    .font(.system(size: 17, weight: .semibold))
+                    .foregroundStyle(.black)
+                    .frame(width: 44, height: 44)
+                    .glassEffect(in: .circle)
+            }
+            .padding(.leading, 12)
+            .padding(.top, 8)
+        }
     }
 }
 
-// MARK: - Live Audio Waveform (UI statis/dummy, hanya render dari data yang diberikan ViewModel)
+// MARK: - Live Audio Waveform (renders heights supplied by the parent)
 struct CalibWaveformView: View {
     let heights: [CGFloat]
     let mainColor: Color
@@ -116,7 +147,7 @@ struct CalibWaveformView: View {
     }
 }
 
-// MARK: - Progress Bar (murni render, nilai progress dikontrol dari ViewModel)
+// MARK: - Progress Bar (renders progress supplied by the parent)
 struct ProgressBarView: View {
     let progress: CGFloat
     let mainColor: Color
@@ -138,5 +169,11 @@ struct ProgressBarView: View {
 }
 
 #Preview {
-    CalibView()
+    CalibView(
+        viewModel: MeetingViewModel(
+            localUser: User(name: "Preview"),
+            networkManager: NetworkManager(),
+            asHost: true
+        )
+    )
 }

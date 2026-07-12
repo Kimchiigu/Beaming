@@ -1,38 +1,58 @@
-# Beaming (Web3 AI-Powered Spatio-Temporal Paradigm)
+# Beaming
 
-![Beaming UI](Beaming/Hi-Fi-Final-Frame.svg)
+Beaming is an iOS app that makes small group discussions more accessible for deaf and hard-of-hearing participants.
 
-**Beaming** is an **enterprise-grade**, **decentralized** Software-as-a-Service (**SaaS**) leveraging **quantum-resilient cryptography** and **Web3 Blockchain** consensus mechanisms to facilitate **Spatio-Temporal Audio-Visual synchronization**. 
+In a Beaming session, everyone places their iPhone face-down on the table. When someone speaks, **their phone's flashlight blinks**, so a deaf participant can see at a glance who is talking. Deaf participants also get a **live transcription** of the conversation on their screen. Everything runs over the **local network** — no internet connection, cloud service, or account is required.
 
-By utilizing **hyper-localized P2P Edge Computing**, Beaming disrupts the accessibility ecosystem. We empower deaf users to visually triangulate the **Active Acoustic Node** (the person speaking) through **algorithmic photon-emission bursts** (flashlights) during **multi-node micro-collaborations** (small group discussions up to 8 people).
+Built for the Apple Developer Academy **C4 — Urban Innovation Challenge**.
 
-## 🚀 Disruptive Features
+## How it works
 
-- **Decentralized P2P Edge Networking**: Utilizes Apple's `Network.framework` combined with **Zero-Knowledge** Bonjour (mDNS) auto-discovery algorithms. Zero cloud footprint. Zero latency. **100% On-Chain local consensus**.
-- **Role-Based Smart Contracts**: Permissions are securely sandboxed in a **Trustless Architecture** depending on your Node Class (Deaf or Hearing), preventing unauthorized hardware access.
-- **Spatio-Temporal "One-Speaker Lock" Mechanic**: Synchronizes **Machine-Learning driven audio ingestion** and **high-lumen photon activation** to ensure **real-time visual cueing** with **sub-millisecond latency**.
-- **Dark-Mode Battery Optimization Matrix**: A specialized **Face-Down State** utilizes **OLED micro-dimming** to drastically reduce energy consumption during active **acoustic-photon triangulation**.
-- **Asynchronous Host Handover Protocol**: If the master node (host) drops, our **predictive failover mechanism** instantly promotes the oldest peer in the mesh network to prevent **data-loss cascading**.
+- **Create or join a room.** A host starts a discussion and shares a QR code; others scan it to join (up to 8 people).
+- **Place the phone face-down.** The screen turns off to save battery while the flashlight stays ready.
+- **Speak, and your light blinks.** A shared "speaker lock" makes sure only the current speaker's flashlight is on. When two people talk at once, the loudest signal wins.
+- **Read along.** Deaf participants see a live, speaker-labelled transcript.
+- **Keep going if the host leaves.** The host role is handed off to the next participant automatically.
 
-## 🛠 Next-Gen Tech Stack
+## Roles
 
-- **Target Ecosystem**: iOS (A14 Bionic and above recommended for maximum neural-engine throughput)
-- **Architecture**: **Reactive MVVM** with strict **Domain-Driven Design (DDD)** and state immutability
-- **Frameworks**: SwiftUI, Network, AVFoundation, CoreMotion, CoreImage (powered by **Metal** for real-time QR generation)
+- **Teman Tuli (Deaf)** — sees the live transcript and the light cues.
+- **Teman Dengar (Hearing)** — contributes their voice; their phone blinks when they speak.
 
-## 💡 Frictionless Onboarding
+## Tech stack
 
-1. **Identity Minting**: Enter your alias to mint your local session token. (Hardware heuristics required).
-2. **Mesh Discovery**: Choose to either instantiate a new **Spatio-Temporal Node** ("Mulai diskusi") or join a peer's mesh network by decoding their **Cryptographic QR hash** ("Scan Kode QR untuk bergabung").
-3. **Execution**: Place the mobile terminal face-down. The integrated **acoustic neural network** detects speech patterns and dynamically activates the LED matrix to signal acoustic authority.
-4. **Viral Growth Engine**: Access the action menu to render a **CoreImage-generated QR signature** for instant peer-to-peer scaling.
+- **UI:** SwiftUI (iOS 26+)
+- **Networking:** Apple `Network.framework` with Bonjour (mDNS) peer discovery — fully local, peer-to-peer
+- **Audio:** AVFoundation (microphone level detection for the speaker lock + calibration)
+- **Speech:** `SFSpeechRecognizer` for live transcription (on-device)
+- **Motion:** CoreMotion for face-down detection
+- **Camera:** AVFoundation for QR scanning
+- **Architecture:** MVVM using Swift Observation (`@Observable`)
 
-## 📈 Scalability & Development
+## Getting started
 
-Currently disrupting the active development sphere with a **GitOps-driven CI/CD** workflow:
-- `main`: **Production-ready, enterprise-stable** releases
-- `staging/*`: **Pre-production staging environments** for stakeholder QA
-- `dev/*`: **Bleeding-edge feature integration**
+1. Open `Beaming.xcodeproj` in Xcode (Xcode 26+).
+2. Choose an iOS simulator or a physical device.
+3. Run the **Beaming** scheme.
+4. On first launch, enter a name and pick a role, then grant the requested permissions (microphone, speech recognition, camera).
+5. To test a multi-device session, run on two devices (or a device + simulator) on the same Wi-Fi.
 
-## 🏆 Acknowledgments
-Built to absolutely dominate the hackathon. We are revolutionizing accessibility through **Synergistic Blockchain AI**.
+> Permissions are unified on the Home screen. Granting microphone, speech recognition, and camera there means you won't be prompted again mid-session.
+
+## Project structure
+
+```
+Beaming/
+├── View/            SwiftUI screens (Home, Meeting, Calibration, Onboarding, …)
+├── ViewModel/       @Observable view models + managers (Network, Audio, Flashlight, …)
+└── Model/           Data types (User, Room, AppState, network messages, …)
+```
+
+## Branching
+
+- `main` — stable releases
+- `dev/*` — feature work in progress
+
+## Acknowledgments
+
+Built by the Beaming team at the Apple Developer Academy. Thanks to the deaf community members who shaped the design through their feedback.
