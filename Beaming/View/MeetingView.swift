@@ -8,7 +8,7 @@
 import SwiftUI
 
 /// The active discussion ("Mode Diskusi"). Content is role-based:
-///  [NOTES] — a deaf ("Teman Tuli") participant gets an app bar with two tabs:
+///  [NOTES] — a deaf ("Teman Tuli") participant gets an app bar with tSwo tabs:
 ///  Transcript (`Meeting+TranscriptView`) and Tutorial (`Meeting+TutorialView`).
 ///  A hearing ("Teman Dengar") participant gets only `Meeting+HearView` (no app bar).
 struct MeetingView: View {
