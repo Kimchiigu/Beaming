@@ -35,6 +35,11 @@ struct CalibView: View {
 
             // MARK: - Header Image
             Image("ImgCal")
+                .resizable()
+                .scaledToFill()
+                .frame(maxWidth: .infinity)
+                .clipped()
+                .ignoresSafeArea(edges: .top)
 
             // MARK: - Content
             VStack(spacing: 24) {
