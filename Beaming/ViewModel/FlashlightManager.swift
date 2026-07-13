@@ -44,8 +44,8 @@ class FlashlightManager {
             
             if self.isWaiting {
                 self.waitTime += 0.05
-                if self.waitTime >= 6.0 {
-                    // Done waiting 6 seconds, start next blink
+                if self.waitTime >= 3.0 {
+                    // Done waiting 3 seconds, start next blink
                     self.isWaiting = false
                     self.waitTime = 0.0
                     self.pulsingUp = true
