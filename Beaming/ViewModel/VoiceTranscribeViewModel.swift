@@ -74,7 +74,7 @@ final class VoiceTranscribeViewModel {
 
     /// A turn ends after this much silence → emit the finalized text.
     private var pauseTimer: Timer?
-    private let pauseInterval: TimeInterval = 2.0
+    private let pauseInterval: TimeInterval = 1.0
 
     // MARK: - Turn state
 
