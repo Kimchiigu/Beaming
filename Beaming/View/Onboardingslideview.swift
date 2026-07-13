@@ -49,8 +49,9 @@ struct OnboardingSlideView: View {
     private var bleedImage: some View {
         Image(page.imageName)
             .resizable()
-            .scaledToFit()
+            .scaledToFill()
             .frame(maxWidth: .infinity)
+            .clipped()
             .ignoresSafeArea(edges: .top)
     }
 
