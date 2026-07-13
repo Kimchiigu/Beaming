@@ -44,14 +44,22 @@ struct Meeting_TranscriptView: View {
                                 emptyState
                                     .frame(height: cardHeight)
                                     .id("empty")
+                                    .transition(.opacity)
                             } else {
                                 ForEach(viewModel.captions) { msg in
                                     captionCard(msg, cardHeight: cardHeight)
                                         .id(msg.id)
+                                        .transition(
+                                            .asymmetric(
+                                                insertion: .opacity.combined(with: .move(edge: .bottom)),
+                                                removal: .opacity
+                                            )
+                                        )
                                 }
                             }
                         }
                         .scrollTargetLayout()
+                        .animation(.spring(duration: 0.45), value: viewModel.captions)
                         .padding(.vertical, (geometry.size.height - cardHeight) / 2)
                     }
                     .scrollTargetBehavior(.viewAligned)
@@ -63,8 +71,8 @@ struct Meeting_TranscriptView: View {
 
                 indicators
                     .padding(.bottom, 8)
-                    .animation(.easeInOut(duration: 0.2), value: viewModel.isLocalSpeaking)
-                    .animation(.easeInOut(duration: 0.2), value: viewModel.room.isSpeaker)
+                    .animation(.easeInOut(duration: 0.25), value: viewModel.room.isSpeaker)
+                    .animation(.easeInOut(duration: 0.25), value: viewModel.captions.last?.speakerID)
             }
         }
         .padding(.horizontal, 24)
@@ -110,21 +118,19 @@ struct Meeting_TranscriptView: View {
 
     // MARK: - Indicators (below the newest card)
 
-    /// Mini avatar for whoever currently holds the floor — the local user (while the
-    /// engine transcribes their turn) or a remote participant. Colored per speaker.
+    /// Mini avatar for the current speaker — the lock holder while someone is actively
+    /// talking, otherwise the speaker of the most recent caption (so the indicator
+    /// stays visible between turns / when the lock isn't being signaled).
     @ViewBuilder
     private var indicators: some View {
-        let remote = currentRemoteSpeaker()
-        if viewModel.isLocalSpeaking {
-            speakerAvatar(viewModel.localUser, isLocal: true)
-        } else if let remote {
-            speakerAvatar(remote, isLocal: false)
+        if let speaker = activeSpeaker() {
+            speakerAvatar(speaker)
         }
     }
 
-    /// Speaker-initial circle + name in that speaker's assigned color. Shows pulsing
-    /// dots while the local engine is mid-turn, otherwise a speaker icon.
-    private func speakerAvatar(_ user: User, isLocal: Bool) -> some View {
+    /// Speaker-initial circle + name in that speaker's assigned color, with pulsing
+    /// dots to signal they're the one actively speaking right now.
+    private func speakerAvatar(_ user: User) -> some View {
         let color = speakerColor(for: user.id)
         return HStack(spacing: 8) {
             ZStack {
@@ -143,13 +149,7 @@ struct Meeting_TranscriptView: View {
                 .font(.system(size: 14, weight: .semibold))
                 .foregroundStyle(color)
 
-            if isLocal && transcriber.isTranscribing {
-                typingDots(color: color)
-            } else {
-                Image(systemName: "speaker.wave.2.fill")
-                    .font(.system(size: 14))
-                    .foregroundStyle(color)
-            }
+            typingDots(color: color)
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 8)
@@ -175,11 +175,19 @@ struct Meeting_TranscriptView: View {
 
     // MARK: - Helpers
 
-    /// The remote participant who currently holds the speaker lock, if any.
-    private func currentRemoteSpeaker() -> User? {
-        guard let speakerID = viewModel.room.isSpeaker,
-              speakerID != viewModel.localUser.id else { return nil }
-        return viewModel.room.participants.first { $0.id == speakerID }
+    /// Who to feature in the indicator. Prefers the current lock holder
+    /// (`room.isSpeaker` — actively speaking); falls back to the speaker of the most
+    /// recent caption so the indicator is reliable even when the lock isn't signaled
+    /// (e.g. between turns, or in setups where the lock isn't being broadcast).
+    private func activeSpeaker() -> User? {
+        if let speakerID = viewModel.room.isSpeaker {
+            if speakerID == viewModel.localUser.id { return viewModel.localUser }
+            if let match = viewModel.room.participants.first(where: { $0.id == speakerID }) {
+                return match
+            }
+        }
+        guard let last = viewModel.captions.last else { return nil }
+        return User(name: last.speakerName, id: last.speakerID)
     }
 
     private func initial(of name: String) -> String {
