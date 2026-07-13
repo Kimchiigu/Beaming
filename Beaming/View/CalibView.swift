@@ -106,9 +106,8 @@ struct CalibView: View {
                             .foregroundColor(.white)
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 16)
-                            .background(mainPurple)
-                            .cornerRadius(28)
                     }
+                    .glassEffect(.regular.tint(mainPurple).interactive())
                     .padding(.horizontal, 24)
                     .padding(.bottom, 24)
                 }
