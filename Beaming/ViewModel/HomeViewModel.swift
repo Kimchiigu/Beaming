@@ -9,6 +9,8 @@ import Foundation
 import Network
 import Observation
 import AVFoundation
+import Speech
+import UIKit
 
 @Observable
 class HomeViewModel {
@@ -21,6 +23,13 @@ class HomeViewModel {
     var isConnecting: Bool = false
     var showAlert: Bool = false
     var alertMessage: String = ""
+
+    // MARK: - Unified permission status (Home permission sheet)
+
+    /// Reflects the real Apple authorization status. False (unchecked) until granted.
+    var micGranted: Bool = false
+    var speechGranted: Bool = false
+    var cameraGranted: Bool = false
 
     private var pendingAction: PendingAction?
     private enum PendingAction { case create, join }
@@ -36,6 +45,7 @@ class HomeViewModel {
     func onAppear() {
         guard !UserDefaults.standard.bool(forKey: permissionKey) else { return }
         pendingAction = nil
+        refreshPermissions()
         showPermission = true
     }
 
@@ -46,6 +56,7 @@ class HomeViewModel {
             startHost()
         } else {
             pendingAction = .create
+            refreshPermissions()
             showPermission = true
         }
     }
@@ -55,6 +66,7 @@ class HomeViewModel {
             showQRScanner = true
         } else {
             pendingAction = .join
+            refreshPermissions()
             showPermission = true
         }
     }
@@ -62,7 +74,6 @@ class HomeViewModel {
     // MARK: - Permission
 
     func permissionAllowed() {
-        AVAudioApplication.requestRecordPermission { _ in }
         UserDefaults.standard.set(true, forKey: permissionKey)
         showPermission = false
         let action = pendingAction
@@ -77,6 +88,71 @@ class HomeViewModel {
     func cancelFlow() {
         showPermission = false
         pendingAction = nil
+    }
+
+    /// Open the permission checklist from the Home settings button — no pending
+    /// create/join action, purely to review or grant permissions.
+    func openPermissionSheet() {
+        pendingAction = nil
+        refreshPermissions()
+        showPermission = true
+    }
+
+    // MARK: - Permission status
+
+    /// Read the current authorization status for each permission so already-granted
+    /// ones appear checked when the sheet opens (and un-granted ones stay unchecked).
+    func refreshPermissions() {
+        micGranted = AVAudioApplication.shared.recordPermission == .granted
+        speechGranted = SFSpeechRecognizer.authorizationStatus() == .authorized
+        cameraGranted = AVCaptureDevice.authorizationStatus(for: .video) == .authorized
+    }
+
+    /// Tap a permission row. If iOS hasn't decided yet, fire the real Apple prompt
+    /// and set the matching flag only if the user allows it. Otherwise (already
+    /// granted OR already denied) deep-link to Settings — iOS gives apps no in-app
+    /// way to revoke or re-prompt, so Settings is the only place to flip a permission
+    /// off (uncheck) or back on (re-check). `refreshPermissions()` (called on
+    /// scenePhase → active) re-reads the status when the user returns, so the
+    /// checkmark always reflects the real system state.
+    func requestPermission(_ kind: PermissionKind) {
+        switch kind {
+        case .microphone:
+            let status = AVAudioApplication.shared.recordPermission
+            if status == .undetermined {
+                AVAudioApplication.requestRecordPermission { granted in
+                    DispatchQueue.main.async { self.micGranted = granted }
+                }
+            } else {
+                openAppSettings()
+            }
+        case .speech:
+            let status = SFSpeechRecognizer.authorizationStatus()
+            if status == .notDetermined {
+                SFSpeechRecognizer.requestAuthorization { st in
+                    DispatchQueue.main.async { self.speechGranted = (st == .authorized) }
+                }
+            } else {
+                openAppSettings()
+            }
+        case .camera:
+            let status = AVCaptureDevice.authorizationStatus(for: .video)
+            if status == .notDetermined {
+                AVCaptureDevice.requestAccess(for: .video) { granted in
+                    DispatchQueue.main.async { self.cameraGranted = granted }
+                }
+            } else {
+                openAppSettings()
+            }
+        }
+    }
+
+    /// Apple records a single per-permission decision; after a denial the request
+    /// APIs just return denied silently. Sending the user to Settings is the only way
+    /// back, so that's what a denied row does on re-tap.
+    private func openAppSettings() {
+        guard let url = URL(string: UIApplication.openSettingsURLString) else { return }
+        UIApplication.shared.open(url)
     }
 
     // MARK: - Host / Guest session
@@ -127,4 +203,9 @@ class HomeViewModel {
         activeMeetingVM = nil
         navigateToMeeting = false
     }
+}
+
+/// Permissions unified in the Home permission sheet.
+enum PermissionKind {
+    case microphone, speech, camera
 }

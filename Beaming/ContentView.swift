@@ -11,10 +11,16 @@ struct ContentView: View {
     @State private var appState = AppState()
 
     var body: some View {
-        NavigationStack {
-            HomeView()
-                .environment(appState)
+        Group {
+            if appState.hasCompletedOnboarding {
+                NavigationStack {
+                    HomeView()
+                }
+            } else {
+                OnboardingView()
+            }
         }
+        .environment(appState)
         .preferredColorScheme(.light)
     }
 }

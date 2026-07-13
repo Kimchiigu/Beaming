@@ -8,12 +8,26 @@
 import Foundation
 import Observation
 
-/// Global app state. There is no onboarding flow — a local identity (stable
-/// UUID + a friendly generated name used only for room naming) is created
-/// automatically on first launch and persisted.
+/// Global app state. `currentUser` (stable UUID + generated codename, used
+/// only for room naming) is created automatically on first launch — no
+/// change there.
+///
+/// Separately, a one-time *profile* onboarding (username + role) is shown
+/// the first time the app opens so the experience can be personalized. Once
+/// completed, `hasCompletedOnboarding` flips to true forever (persisted),
+/// so returning users skip straight past onboarding.
 @Observable
 class AppState {
     var currentUser: User
+
+    // MARK: - Profile onboarding (username + role)
+
+    var profileUsername: String?
+    var profileRole: OnboardingRole?
+
+    var hasCompletedOnboarding: Bool {
+        profileUsername != nil && profileRole != nil
+    }
 
     init() {
         if let idString = UserDefaults.standard.string(forKey: "userID"),
@@ -27,6 +41,19 @@ class AppState {
             UserDefaults.standard.set(name, forKey: "userName")
             currentUser = User(name: name, id: id)
         }
+
+        profileUsername = UserDefaults.standard.string(forKey: "profileUsername")
+        if let roleRaw = UserDefaults.standard.string(forKey: "profileRole") {
+            profileRole = OnboardingRole(rawValue: roleRaw)
+        }
+    }
+
+    /// Called once, from the onboarding form, when the user taps Continue.
+    func completeOnboarding(username: String, role: OnboardingRole) {
+        profileUsername = username
+        profileRole = role
+        UserDefaults.standard.set(username, forKey: "profileUsername")
+        UserDefaults.standard.set(role.rawValue, forKey: "profileRole")
     }
 
     /// A friendly Indonesian codename, used only for room naming / debugging.
