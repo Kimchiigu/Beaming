@@ -65,7 +65,7 @@ struct OnboardingView: View {
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 16)
             }
-            .background(currentAccentColor, in: Capsule())
+            .glassEffect(.regular.tint(formAccentColor).interactive())
             .disabled(viewModel.isLastPage && !viewModel.isFormValid)
             .opacity(
                 viewModel.isLastPage && !viewModel.isFormValid
