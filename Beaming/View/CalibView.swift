@@ -145,7 +145,7 @@ struct CalibWaveformView: View {
             ForEach(0..<heights.count, id: \.self) { index in
                 RoundedRectangle(cornerRadius: 3)
                     .fill(mainColor.opacity(0.35))
-                    .frame(width: 5, height: heights[index])
+                    .frame(width: 8, height: heights[index])
             }
         }
         .frame(height: 60)

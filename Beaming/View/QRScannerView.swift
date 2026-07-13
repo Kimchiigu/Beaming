@@ -44,11 +44,26 @@ struct QRScannerView: View {
 
                     Spacer()
 
-                    Text("Arahkan kamera ke kode QR host")
-                        .font(.system(size: 17))
-                        .foregroundStyle(.white)
-                        .padding(.bottom, 40)
+                    HStack(alignment: .top, spacing: 14) {
+                        Image(systemName: "qrcode.viewfinder")
+                            .font(.system(size: 26, weight: .semibold))
+                            .frame(width: 56, height: 56)
+                            .foregroundStyle(Color.white)
+                            .background(BeamingPalette.purple)
+                            .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                        VStack(alignment: .leading) {
+                            Text("Scan QR untuk bergabung")
+                                .font(.system(size: 18, weight: .semibold))
+                                .padding(.bottom, 2)
+                            Text("Pindai QR untuk masuk ke ruang diskusi.")
+                                .font(.system(size: 14, weight: .regular))
+                        }
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(20)
+                    .beamingCard()
                 }
+                .padding(28)
             }
             .navigationTitle("Scan QR")
             .navigationBarTitleDisplayMode(.inline)

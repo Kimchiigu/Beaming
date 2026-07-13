@@ -63,7 +63,7 @@ struct MeetingView: View {
                 toolbarIcon("person.2.fill") {
                     withAnimation(.easeOut(duration: 0.15)) { showParticipants.toggle() }
                 }
-                toolbarIcon("qrcode.viewfinder") {
+                toolbarIcon("qrcode") {
                     showHostQR = true
                 }
             }
