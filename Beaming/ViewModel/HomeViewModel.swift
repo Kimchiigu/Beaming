@@ -16,6 +16,10 @@ import UIKit
 class HomeViewModel {
     var currentUser: User
 
+    /// Profile role — deaf (Tuli) users skip mic/speech permissions and don't
+    /// transcribe locally in the meeting.
+    var role: OnboardingRole?
+
     var showPermission: Bool = false
     var showQRScanner: Bool = false
     var activeMeetingVM: MeetingViewModel?
@@ -36,8 +40,9 @@ class HomeViewModel {
 
     private let permissionKey = "hasShownPermission"
 
-    init(user: User) {
+    init(user: User, role: OnboardingRole? = nil) {
         self.currentUser = user
+        self.role = role
     }
 
     /// Called from HomeView.onAppear. On first launch, auto-open the permission
@@ -159,7 +164,7 @@ class HomeViewModel {
 
     private func startHost() {
         let nm = NetworkManager()
-        let vm = MeetingViewModel(localUser: currentUser, networkManager: nm, asHost: true)
+        let vm = MeetingViewModel(localUser: currentUser, networkManager: nm, asHost: true, isTuli: role == .temanTuli)
         activeMeetingVM = vm
         navigateToMeeting = true
     }
@@ -189,7 +194,7 @@ class HomeViewModel {
             timeout.cancel()
             self.isConnecting = false
             if success {
-                let vm = MeetingViewModel(localUser: self.currentUser, networkManager: nm, asHost: false)
+                let vm = MeetingViewModel(localUser: self.currentUser, networkManager: nm, asHost: false, isTuli: self.role == .temanTuli)
                 self.activeMeetingVM = vm
                 self.navigateToMeeting = true
             } else {
