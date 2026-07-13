@@ -88,7 +88,7 @@ struct Meeting_TranscriptView: View {
         .scrollTransition(.interactive, axis: .vertical) { content, phase in
             content
                 .scaleEffect(phase.isIdentity ? 1.0 : 0.5, anchor: .leading)
-                .opacity(phase.isIdentity ? 1.0 : 0.4)
+                .opacity(phase.isIdentity ? 1.0 : 0.2)
                 .offset(y: phase.value * 40)
         }
     }

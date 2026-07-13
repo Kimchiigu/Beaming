@@ -15,6 +15,8 @@ struct PermissionSheet: View {
     let micGranted: Bool
     let speechGranted: Bool
     let cameraGranted: Bool
+    /// Deaf (Tuli) users don't speak — hide the mic + speech rows (camera only).
+    let isTuli: Bool
     let onRequest: (PermissionKind) -> Void
     let onAllow: () -> Void
     let onClose: () -> Void
@@ -30,19 +32,21 @@ struct PermissionSheet: View {
                     .padding(.horizontal, 22)
                     .padding(.top, 4)
 
-                PermissionRow(
-                    icon: "microphone",
-                    title: "Mikrofon",
-                    description: "Mendeteksi suara saat Anda berbicara untuk menyalakan lampu.",
-                    granted: micGranted
-                ) { onRequest(.microphone) }
+                if !isTuli {
+                    PermissionRow(
+                        icon: "microphone",
+                        title: "Mikrofon",
+                        description: "Mendeteksi suara saat Anda berbicara untuk menyalakan lampu.",
+                        granted: micGranted
+                    ) { onRequest(.microphone) }
 
-                PermissionRow(
-                    icon: "waveform",
-                    title: "Pengenalan Suara",
-                    description: "Mengubah percakapan menjadi teks transkripsi langsung.",
-                    granted: speechGranted
-                ) { onRequest(.speech) }
+                    PermissionRow(
+                        icon: "waveform",
+                        title: "Pengenalan Suara",
+                        description: "Mengubah percakapan menjadi teks transkripsi langsung.",
+                        granted: speechGranted
+                    ) { onRequest(.speech) }
+                }
 
                 PermissionRow(
                     icon: "camera.fill",
@@ -128,6 +132,7 @@ private struct PermissionRow: View {
         micGranted: true,
         speechGranted: false,
         cameraGranted: false,
+        isTuli: false,
         onRequest: { _ in },
         onAllow: {},
         onClose: {}

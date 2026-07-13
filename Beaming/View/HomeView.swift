@@ -28,7 +28,7 @@ struct HomeView: View {
                 // Use the profile name (entered during onboarding) over the stable id
                 // so the meeting room shows the real name, not the generated codename.
                 let name = appState.profileUsername ?? appState.currentUser.name
-                viewModel = HomeViewModel(user: User(name: name, id: appState.currentUser.id))
+                viewModel = HomeViewModel(user: User(name: name, id: appState.currentUser.id), role: appState.profileRole)
             }
             viewModel?.onAppear()
         }
@@ -149,6 +149,7 @@ struct HomeView: View {
                 micGranted: viewModel.micGranted,
                 speechGranted: viewModel.speechGranted,
                 cameraGranted: viewModel.cameraGranted,
+                isTuli: appState.profileRole == .temanTuli,
                 onRequest: { viewModel.requestPermission($0) },
                 onAllow: { viewModel.permissionAllowed() },
                 onClose: { viewModel.cancelFlow() }
@@ -225,12 +226,10 @@ private struct EditProfileSheet: View {
                             dismiss()
                         } label: {
                             Image(systemName: "checkmark")
-                                .font(.system(size: 15, weight: .bold))
-                                .foregroundStyle(.white)
-                                .frame(width: 30, height: 30)
-                                .background(Color.blue, in: Circle())
+                                .fontWeight(.bold)
                         }
-                        .buttonStyle(.plain)
+                        .buttonStyle(.borderedProminent)
+                        .tint(.blue)
                         .disabled(!viewModel.isFormValid)
                     }
                 }

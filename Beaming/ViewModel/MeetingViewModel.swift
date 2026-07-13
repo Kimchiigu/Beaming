@@ -77,7 +77,7 @@ class MeetingViewModel {
     // MARK: - Init
     
     /// Initialize for a host creating a new room.
-    init(localUser: User, networkManager: NetworkManager, asHost: Bool, room: Room? = nil) {
+    init(localUser: User, networkManager: NetworkManager, asHost: Bool, room: Room? = nil, isTuli: Bool = false) {
         self.localUser = localUser
         self.networkManager = networkManager
         self.isHost = asHost
@@ -96,8 +96,10 @@ class MeetingViewModel {
             startHosting()
         }
         
-        // All users: show calibration first, then start audio after done
-        showCalibration = true
+        // Hearing users calibrate the mic first; deaf (Tuli) users skip it entirely
+        // (they don't speak — no mic, no speaker-lock, no flashlight) and only receive
+        // remote captions + speaker status over the network.
+        showCalibration = !isTuli
         startFaceDownDetection()
     }
     

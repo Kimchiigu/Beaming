@@ -101,13 +101,20 @@ struct MeetingView: View {
             // the idle timer prevents auto-lock, so the app stays foregrounded and
             // the torch can still blink when someone speaks. (Restored on disappear.)
             UIApplication.shared.isIdleTimerDisabled = true
-            // Always-on captions: route the local engine's output into the shared
-            // feed (which also broadcasts to the room) and start once calibrated.
-            transcriber.onCaptionUpdate = { [weak viewModel] text, isFinal in
-                viewModel?.handleLocalCaption(text: text, isFinal: isFinal)
-            }
-            if !viewModel.showCalibration {
-                transcriber.startTranscribing()
+            if isTuli {
+                // Deaf (Tuli) users don't speak: no mic, no local transcription — they
+                // only read remote captions. As host, share the QR now since there's no
+                // calibration step to trigger the auto-show.
+                if viewModel.isHost { showHostQR = true }
+            } else {
+                // Always-on captions: route the local engine's output into the shared
+                // feed (which also broadcasts to the room) and start once calibrated.
+                transcriber.onCaptionUpdate = { [weak viewModel] text, isFinal in
+                    viewModel?.handleLocalCaption(text: text, isFinal: isFinal)
+                }
+                if !viewModel.showCalibration {
+                    transcriber.startTranscribing()
+                }
             }
         }
         .onDisappear {
