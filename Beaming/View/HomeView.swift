@@ -38,6 +38,13 @@ struct HomeView: View {
                 viewModel.currentUser.name = newName
             }
         }
+        .onChange(of: appState.profileRole) { _, newRole in
+            // Keep the VM's role in sync if the user changes it via Edit Profile, so the
+            // meeting knows whether to run mic calibration (hearing) or skip it (deaf).
+            // Without this, the cached role goes stale and a switched-to Dengar user is
+            // still treated as Tuli (CalibView skipped).
+            if let viewModel { viewModel.role = newRole }
+        }
         .onChange(of: scenePhase) { _, phase in
             // Re-read permission status when returning to the app (e.g. after the
             // user flipped a switch in Settings following a denial).
