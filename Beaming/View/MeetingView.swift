@@ -17,7 +17,6 @@ struct MeetingView: View {
     @State var viewModel: MeetingViewModel
     @State private var showHostQR = false
     @State private var didAutoShowQR = false
-    @State private var showParticipants = false
     @State private var selectedTab: MeetingTab = .transcript
     @State private var transcriber = VoiceTranscribeViewModel()
 
@@ -36,10 +35,6 @@ struct MeetingView: View {
             if viewModel.isFaceDown && !viewModel.showCalibration {
                 FaceDownView()
                     .transition(.opacity)
-            }
-
-            if showParticipants && !viewModel.showCalibration && !viewModel.isFaceDown {
-                participantsDropdown
             }
         }
         .navigationBarTitleDisplayMode(.inline)
@@ -60,10 +55,17 @@ struct MeetingView: View {
                     .foregroundStyle(.primary)
             }
             ToolbarItemGroup(placement: .topBarTrailing) {
-                toolbarIcon("person.2.fill") {
-                    withAnimation(.easeOut(duration: 0.15)) { showParticipants.toggle() }
+                // Participants list — native Menu, auto-sized to the participant count.
+                Menu {
+                    ForEach(viewModel.room.participants, id: \.id) { participant in
+                        Button(participant.name) {}
+                    }
+                } label: {
+                    Image(systemName: "person.2.fill")
+                        .foregroundStyle(.primary)
                 }
-                toolbarIcon("qrcode.viewfinder") {
+
+                toolbarIcon("qrcode") {
                     showHostQR = true
                 }
             }
@@ -85,7 +87,6 @@ struct MeetingView: View {
         .onChange(of: viewModel.isFaceDown) { _, faceDown in
             if faceDown {
                 showHostQR = false
-                showParticipants = false
             }
         }
         .sheet(isPresented: $showHostQR) {
@@ -173,29 +174,6 @@ struct MeetingView: View {
         }
     }
 
-    // MARK: - Participants dropdown
-
-    private var participantsDropdown: some View {
-        VStack {
-            HStack {
-                Spacer()
-                DropdownMenuList(names: viewModel.room.participants.map { $0.name })
-                    .padding(.trailing, 16)
-                    .padding(.top, 6)
-            }
-            Spacer()
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-        .background(
-            Color.clear
-                .contentShape(Rectangle())
-                .onTapGesture {
-                    withAnimation(.easeOut(duration: 0.15)) { showParticipants = false }
-                }
-        )
-        .transition(.opacity)
-        .zIndex(10)
-    }
 }
 
 private enum MeetingTab: Hashable {

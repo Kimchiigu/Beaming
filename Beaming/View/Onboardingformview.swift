@@ -25,24 +25,30 @@ struct OnboardingFormView: View {
                     .padding(.top, 12)
             }
 
-            TextField("Nama", text: $viewModel.username)
-                .focused($isUsernameFocused)
-                .textInputAutocapitalization(.words)
-                .autocorrectionDisabled()
-                .padding(.horizontal, 20)
-                .padding(.vertical, 16)
-                .background(
-                    Capsule()
-                        .fill(Color.white)
-                        .overlay(
-                            Capsule()
-                                .stroke(Color.black.opacity(0.08))
-                        )
-                )
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Nama")
+                    .font(.system(size: 15))
+                    .foregroundStyle(.secondary)
+                TextField("Nama", text: $viewModel.username)
+                    .focused($isUsernameFocused)
+                    .textInputAutocapitalization(.words)
+                    .autocorrectionDisabled()
+                    .padding(.horizontal, 20)
+                    .padding(.vertical, 16)
+                    .background(
+                        Capsule()
+                            .fill(Color.white)
+                            .overlay(
+                                Capsule()
+                                    .stroke(Color.black.opacity(0.08))
+                            )
+                    )
+            }
 
             VStack(alignment: .leading, spacing: 16) {
-                Text("Pilih peranmu")
-                    .font(.system(size: 17, weight: .semibold))
+                Text("Peran")
+                    .font(.system(size: 15))
+                    .foregroundStyle(.secondary)
 
                 ForEach(OnboardingRole.allCases) { role in
                     CardField(
