@@ -108,10 +108,15 @@ struct Meeting_TranscriptView: View {
             Image(systemName: "captions.bubble")
                 .font(.system(size: 40))
                 .foregroundStyle(BeamingPalette.purple.opacity(0.5))
-            Text(transcriber.isTranscribing ? "Mendengarkan…" : "Menunggu percakapan…")
-                .font(.system(size: 18, weight: .semibold))
-                .foregroundStyle(BeamingPalette.purple)
-                .multilineTextAlignment(.center)
+            HStack(spacing: 0) {
+                Text(transcriber.isTranscribing ? "Mendengarkan" : "Menunggu percakapan")
+                // Looping loading dots: "." → ".." → "..." → "." …
+                PhaseAnimator([1, 2, 3]) { phase in
+                    Text(String(repeating: ".", count: phase))
+                } animation: { _ in .easeInOut(duration: 0.4) }
+            }
+            .font(.system(size: 18, weight: .semibold))
+            .foregroundStyle(BeamingPalette.purple)
         }
         .frame(maxWidth: .infinity)
     }
