@@ -24,10 +24,10 @@ struct CardField: View {
                     .resizable()
                     .scaledToFit()
                     .frame(width: 122, height: 122)
-                    .offset(x: 5, y: 15)
+                    .offset(x: 15, y: 16)
 
                 // Text
-                VStack(alignment: .leading, spacing: 6) {
+                VStack(alignment: .leading, spacing: 5) {
                     Text(role.displayName)
                         .font(.system(size: 17, weight: .semibold))
                         .foregroundStyle(isSelected ? .white : .black)
@@ -38,7 +38,7 @@ struct CardField: View {
                         .multilineTextAlignment(.leading)
                         .fixedSize(horizontal: false, vertical: true)
                 }
-                .padding(.leading, 98)
+                .padding(.leading, 115)
                 .padding(.trailing, 20)
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
@@ -46,17 +46,7 @@ struct CardField: View {
             .frame(height: 132)
             .background(
                 RoundedRectangle(cornerRadius: 20)
-                    .fill(isSelected ? accentColor : .white)
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 20)
-                    .stroke(
-                        isSelected
-                            ? accentColor
-                            : Color.black.opacity(0.06),
-                        lineWidth: isSelected ? 2 : 1
-                    )
-            )
+                    .fill(isSelected ? accentColor : .white))
             .shadow(
                 color: .black.opacity(0.05),
                 radius: 10,
