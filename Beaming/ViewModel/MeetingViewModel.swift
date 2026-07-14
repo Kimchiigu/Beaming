@@ -28,6 +28,11 @@ class MeetingViewModel {
     
     /// Whether this device currently holds the speaker lock and has flashlight on.
     var isActiveSpeaker: Bool = false
+
+    /// Indicator ONLY — every participant currently speaking (claimed, not released).
+    /// The lock (`room.isSpeaker`) still picks a single winner for the flashlight; this
+    /// set just lets the transcript show avatars when several people talk at once.
+    var speakingParticipants: [UUID] = []
     
     /// Whether the calibration screen should be shown (hearing users only).
     var showCalibration: Bool = false
@@ -39,6 +44,10 @@ class MeetingViewModel {
 
     /// Finalized turn bubbles (non-empty text only), newest last.
     var captions: [CaptionMessage] = []
+
+    /// The in-progress (partial) caption for whoever is talking right now — shown live
+    /// in the transcript before the turn finalizes. nil when no one is mid-turn.
+    var liveCaption: CaptionMessage?
 
     /// True while THIS device is mid-turn (the local user is speaking). Drives the
     /// ephemeral "sedang bicara…" placeholder bubble in the chat.
@@ -122,22 +131,34 @@ class MeetingViewModel {
         let speakerName = localUser.name
         if isFinal {
             isLocalSpeaking = false
+            liveCaption = nil
             guard !text.isEmpty else { return }   // nothing recognized → no bubble, no broadcast
             appendTurn(speakerID: speakerID, speakerName: speakerName, text: text)
-            // Only finalized turns go on the wire — no per-word streaming.
             sendCaption(speakerID: speakerID, speakerName: speakerName, text: text, isFinal: true)
         } else {
             isLocalSpeaking = true
+            // Stream the partial so viewers see the live transcript as it's recognized.
+            liveCaption = CaptionMessage(speakerID: speakerID, speakerName: speakerName, text: text, date: Date())
+            sendCaption(speakerID: speakerID, speakerName: speakerName, text: text, isFinal: false)
         }
     }
 
     /// A finalized caption arrived from a peer over the network.
     private func handleRemoteCaption(speakerID: UUID, speakerName: String, text: String, isFinal: Bool) {
-        // Ignore our own captions echoed back, and empty finals.
-        guard speakerID != localUser.id, !text.isEmpty else { return }
-        appendTurn(speakerID: speakerID, speakerName: speakerName, text: text)
-        // Star topology: the host relays guest captions to the OTHER guests so
-        // everyone sees them (guests only have a direct line to the host).
+        // Ignore our own captions echoed back.
+        guard speakerID != localUser.id else { return }
+
+        if isFinal {
+            liveCaption = nil
+            guard !text.isEmpty else { return }
+            appendTurn(speakerID: speakerID, speakerName: speakerName, text: text)
+        } else {
+            // Partial — show it as the live bubble.
+            liveCaption = CaptionMessage(speakerID: speakerID, speakerName: speakerName, text: text, date: Date())
+        }
+
+        // Star topology: the host relays guest captions (partial + final) to the OTHER
+        // guests so everyone sees them (guests only have a direct line to the host).
         if isHost {
             networkManager.broadcastMessage(.caption(speakerID: speakerID, speakerName: speakerName, text: text, isFinal: isFinal))
         }
@@ -264,6 +285,10 @@ class MeetingViewModel {
                 isActiveSpeaker = false
                 flashlightManager.setFlashlight(on: false)
             }
+
+        case .speakingParticipants(let ids):
+            // Indicator only — who's currently speaking (host is the source of truth).
+            speakingParticipants = ids
             
         case .hostHandover(let newHostID):
             if newHostID == localUser.id {
@@ -362,13 +387,20 @@ class MeetingViewModel {
     /// Evaluate a speaker claim (host side) — uses competing claim window.
     private func handleSpeakerClaim(from userID: UUID, rmsLevel: Float) {
         guard isHost else { return }
-        
-        // If room is already locked by someone, silently reject
+
+        // Multi-speaker INDICATOR (lock logic unchanged below): mark this participant
+        // as speaking whether or not they win the lock.
+        if !speakingParticipants.contains(userID) {
+            speakingParticipants.append(userID)
+            broadcastSpeakingParticipants()
+        }
+
+        // If room is already locked by someone, silently reject the lock claim
         guard room.isSpeaker == nil else { return }
-        
+
         // Add this claim to the pending claims buffer
         pendingClaims.append((userID: userID, rmsLevel: rmsLevel))
-        
+
         // If this is the first claim, start the 150ms resolution window
         if claimResolutionTimer == nil {
             claimResolutionTimer = Timer.scheduledTimer(withTimeInterval: claimWindowDuration, repeats: false) { [weak self] _ in
@@ -415,14 +447,20 @@ class MeetingViewModel {
     /// Handle speaker release (host side).
     private func handleSpeakerRelease(from userID: UUID) {
         if isHost {
+            // Multi-speaker indicator: this participant stopped talking.
+            if speakingParticipants.contains(userID) {
+                speakingParticipants.removeAll { $0 == userID }
+                broadcastSpeakingParticipants()
+            }
+
             if room.isSpeaker == userID {
                 room.isSpeaker = nil
-                
+
                 if userID == localUser.id {
                     isActiveSpeaker = false
                     flashlightManager.setFlashlight(on: false)
                 }
-                
+
                 networkManager.broadcastMessage(.speakerStatus(speakerID: nil))
             }
         }
@@ -497,13 +535,19 @@ class MeetingViewModel {
     
     private func handlePeerDisconnected(_ peerID: UUID) {
         room.participants.removeAll { $0.id == peerID }
-        
+
+        // Multi-speaker indicator: drop them if they were talking.
+        if speakingParticipants.contains(peerID) {
+            speakingParticipants.removeAll { $0 == peerID }
+            if isHost { broadcastSpeakingParticipants() }
+        }
+
         // If the disconnected peer was the speaker, release the lock
         if room.isSpeaker == peerID {
             room.isSpeaker = nil
             networkManager.broadcastMessage(.speakerStatus(speakerID: nil))
         }
-        
+
         if isHost {
             broadcastParticipantUpdate()
         }
@@ -518,6 +562,11 @@ class MeetingViewModel {
             roomName: room.name
         )
         networkManager.broadcastMessage(update)
+    }
+
+    /// Broadcast the current set of speaking participants (indicator only).
+    private func broadcastSpeakingParticipants() {
+        networkManager.broadcastMessage(.speakingParticipants(speakingParticipants))
     }
     
     private func cleanup() {

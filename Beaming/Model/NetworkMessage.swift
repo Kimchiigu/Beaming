@@ -21,6 +21,9 @@ enum NetworkMessage: Codable {
     case speakerClaim(userID: UUID, rmsLevel: Float)
     case speakerRelease(userID: UUID)
     case speakerStatus(speakerID: UUID?)
+    /// Indicator ONLY (lock logic unchanged): every participant currently speaking,
+    /// so the transcript can show multi-speaker avatars. Host broadcasts; guests receive.
+    case speakingParticipants([UUID])
     
     // Room management
     case hostHandover(newHostID: UUID)
