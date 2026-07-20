@@ -4,9 +4,11 @@
 //
 //  Unified permission sheet: Microphone, Speech Recognition, Camera.
 //  Each row is tappable — tapping fires the real Apple prompt (or, if the user has
-//  already denied it, opens Settings so they can re-enable), and the checkmark fills
-//  only once the permission is actually granted. Uses standard Apple sheet chrome
-//  (nav bar title + toolbar close button), matching the edit-profile sheet.
+//  already denied it, opens Settings so they can re-enable), and the toggle switches
+//  on only once the permission is actually granted (iOS won't let an app flip a
+//  permission itself, so the toggle is a state indicator, not a direct switch).
+//  Uses standard Apple sheet chrome (nav bar title + toolbar close button), matching
+//  the edit-profile sheet.
 //
 
 import SwiftUI
@@ -115,9 +117,14 @@ private struct PermissionRow: View {
 
                 Spacer(minLength: 0)
 
-                Image(systemName: granted ? "checkmark.circle.fill" : "circle")
-                    .font(.system(size: 22))
-                    .foregroundStyle(granted ? BeamingPalette.purple : Color.secondary.opacity(0.35))
+                // Visual state indicator only — the whole-row Button above drives the
+                // real permission request, so the toggle itself ignores touches (a
+                // permission can't be granted/revoked by the app directly). It reads the
+                // live `granted` state and flips on the moment iOS reports the permission.
+                Toggle("", isOn: .constant(granted))
+                    .labelsHidden()
+                    .tint(BeamingPalette.purple)
+                    .allowsHitTesting(false)
             }
             .padding(15)
             .beamingCard()

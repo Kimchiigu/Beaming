@@ -17,6 +17,7 @@ struct MeetingView: View {
     @State var viewModel: MeetingViewModel
     @State private var showHostQR = false
     @State private var didAutoShowQR = false
+    @State private var showDebug = false
     @State private var selectedTab: MeetingTab = .transcript
     @State private var transcriber = VoiceTranscribeViewModel()
 
@@ -55,6 +56,13 @@ struct MeetingView: View {
                     .foregroundStyle(.primary)
             }
             ToolbarItemGroup(placement: .topBarTrailing) {
+                // Dengar-only debug overlay (ladybug). The Tuli interface is untouched.
+                if !isTuli {
+                    toolbarIcon("ladybug.fill", tint: BeamingPalette.purple) {
+                        showDebug = true
+                    }
+                }
+
                 // Participants list — native Menu, auto-sized to the participant count.
                 Menu {
                     ForEach(viewModel.room.participants, id: \.id) { participant in
@@ -93,6 +101,9 @@ struct MeetingView: View {
             QRShareSheet(code: viewModel.qrCodeString) {
                 showHostQR = false
             }
+        }
+        .sheet(isPresented: $showDebug) {
+            Meeting_DebugView(viewModel: viewModel, transcriber: transcriber)
         }
         .onAppear {
             // Keep the screen awake for the whole meeting. The torch is a camera

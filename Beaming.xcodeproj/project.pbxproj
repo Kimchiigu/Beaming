@@ -6,6 +6,10 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		AE0B0820300DC2DA008EEA1A /* FluidAudio in Frameworks */ = {isa = PBXBuildFile; productRef = AE0B081F300DC2DA008EEA1A /* FluidAudio */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXFileReference section */
 		AEAECB8B2FF5F486009E24F5 /* Beaming.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Beaming.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -36,6 +40,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				AE0B0820300DC2DA008EEA1A /* FluidAudio in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -78,6 +83,7 @@
 			);
 			name = Beaming;
 			packageProductDependencies = (
+				AE0B081F300DC2DA008EEA1A /* FluidAudio */,
 			);
 			productName = Beaming;
 			productReference = AEAECB8B2FF5F486009E24F5 /* Beaming.app */;
@@ -107,6 +113,9 @@
 			);
 			mainGroup = AEAECB822FF5F486009E24F5;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				AE0B081E300DC2DA008EEA1A /* XCRemoteSwiftPackageReference "FluidAudio" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = AEAECB8C2FF5F486009E24F5 /* Products */;
 			projectDirPath = "";
@@ -266,7 +275,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = A5P7HG9FVD;
+				DEVELOPMENT_TEAM = GLM4HJ3467;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Beaming/Info.plist;
@@ -304,7 +313,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = A5P7HG9FVD;
+				DEVELOPMENT_TEAM = GLM4HJ3467;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Beaming/Info.plist;
@@ -357,6 +366,25 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		AE0B081E300DC2DA008EEA1A /* XCRemoteSwiftPackageReference "FluidAudio" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/FluidInference/FluidAudio.git";
+			requirement = {
+				branch = main;
+				kind = branch;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		AE0B081F300DC2DA008EEA1A /* FluidAudio */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = AE0B081E300DC2DA008EEA1A /* XCRemoteSwiftPackageReference "FluidAudio" */;
+			productName = FluidAudio;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = AEAECB832FF5F486009E24F5 /* Project object */;
 }

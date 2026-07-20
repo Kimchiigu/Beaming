@@ -92,6 +92,12 @@ struct CalibView: View {
                 Spacer()
 
                 if isCalibrating {
+                    // Current phase: downloading models → recording voice → enrolling.
+                    Text(viewModel.audioManager.calibrationPhase.rawValue)
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundColor(mainPurple)
+                        .padding(.bottom, 8)
+
                     // Progress bar (real progress from AudioManager, 0...1)
                     ProgressBarView(progress: CGFloat(viewModel.audioManager.calibrationProgress), mainColor: mainPurple)
                         .frame(height: 12)

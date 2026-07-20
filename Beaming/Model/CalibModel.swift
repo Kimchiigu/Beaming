@@ -8,27 +8,27 @@
 import Foundation
 import CoreGraphics
 
-// MARK: - Tahapan kalibrasi suara
+// MARK: - Tahapan pendaftaran suara (owner enrollment)
 enum CalibStage {
     case idle        // belum mulai, masih di tampilan awal
-    case recording    // sedang "merekam" (dummy, belum ada rekaman audio asli)
-    case done         // sudah selesai 5 detik, tampil "Berhasil"
+    case recording   // sedang merekam suara pemilik
+    case done        // sudah selesai, suara terdaftar
 }
 
-// MARK: - Data statis untuk layar kalibrasi
+// MARK: - Data statis untuk layar pendaftaran suara
 struct CalibModel {
-    static let title = "Kalibrasi suara"
-    static let subtitle = "Letakkan HP di depan Anda dan\nucapkan kalimat berikut:"
+    static let title = "Daftarkan suaramu"
+    static let subtitle = "Letakkan HP di dekatmu dan\nbacakan kalimat berikut dengan suaramu sendiri:"
     static let calibrationSentence = "\"Halo semua, saya siap untuk\nmengikuti diskusi ini.\""
 
     static let successTitle = "Berhasil"
-    static let successSubtitle = "Mikrofon kamu sudah siap!"
+    static let successSubtitle = "Suara kamu berhasil terdaftar!"
 
-    static let buttonTitle = "Mulai Kalibrasi"
+    static let buttonTitle = "Daftar Suara"
 
-    // Durasi proses kalibrasi (dummy)
-    static let calibrationDuration: Double = 5.0
+    // Durasi rekaman pendaftaran (detik)
+    static let calibrationDuration: Double = 6.0
 
-    // Nilai awal bar waveform (dummy, sebelum dianimasikan)
+    // Nilai awal bar waveform (sebelum dianimasikan oleh level mic)
     static let initialWaveformHeights: [CGFloat] = [18, 32, 48, 26, 56, 30, 44, 20, 34]
 }
